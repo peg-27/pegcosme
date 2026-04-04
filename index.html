@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PEG COSME">
+<link rel="manifest" href="manifest.json">
+
 
 <!-- ══════════════════════════════════════════
      #INDEX セクション索引
@@ -4196,5 +4198,66 @@ async function migrateProductImages() {
 })();
 
 </script>
+
+<!-- PWA インストールボタン -->
+<button id="btnInstall" style="
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  background: #8ea2cc;
+  color: #fff;
+  border: none;
+  border-radius: 24px;
+  padding: 10px 20px;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  cursor: pointer;
+">インストール</button>
+
+<script>
+// PWA インストールボタン制御
+let deferredPrompt = null;
+const btnInstall = document.getElementById('btnInstall');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  btnInstall.style.display = '';
+});
+
+btnInstall.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const result = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  btnInstall.style.display = 'none';
+});
+
+window.addEventListener('appinstalled', () => {
+  btnInstall.style.display = 'none';
+  deferredPrompt = null;
+});
+</script>
+
+<script>
+// Service Worker 登録＆更新通知
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then((reg) => {
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'activated') {
+          if (confirm('新しいバージョンがあります。更新しますか？')) {
+            location.reload();
+          }
+        }
+      });
+    });
+  });
+}
+</script>
+
 </body>
 </html>
