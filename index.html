@@ -1,0 +1,4200 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+<title>PEG COSME</title>
+<meta name="theme-color" content="#8ea2cc">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PEG COSME">
+
+<!-- ══════════════════════════════════════════
+     #INDEX セクション索引
+     ──────────────────────────────────────────
+     【CSS＋HTML（上部・機能ごとにセット）】
+     #BASE .......... リセット・CSS変数・共通スタイル
+     #HEADER ........ ヘッダー・タブバー
+     #SEARCH ........ 検索バー
+     #BRAND ......... ブランド一覧画面・空状態・FAB
+     #PRODUCT ....... 商品一覧画面
+     #DETAIL ........ 商品詳細画面
+     #FORM .......... 商品登録・編集フォーム
+     #MEMO .......... メモタブ（一覧・詳細・フォーム）
+     #SETTINGS ...... 設定画面（カテゴリ管理・ブランド管理・バックアップ）
+     #MODAL ......... モーダル共通（app-wrap外）
+     #LIGHTBOX ...... 画像全画面モーダル（app-wrap外）
+     #TOAST ......... トースト通知（app-wrap外）
+
+     【JavaScript（下部・一括）】
+     #DB ............ IndexedDB操作
+     #STATE ......... 画面遷移・状態管理
+     #BRAND_JS ...... ブランド一覧ロジック
+     #PRODUCT_JS .... 商品一覧ロジック
+     #DETAIL_JS ..... 商品詳細ロジック
+     #FORM_JS ....... 商品フォームロジック
+     #INGREDIENT .... 成分整形補助
+     #MEMO_JS ....... メモ機能ロジック
+     #SEARCH_JS ..... 検索処理
+     #SETTINGS_JS ... 設定画面ロジック（カテゴリ管理・ブランド管理・バックアップ処理）
+     #MODAL_JS ...... モーダル制御
+     #LIGHTBOX_JS ... 画像全画面モーダル制御
+     #TOAST_JS ...... トースト制御
+     #UTIL .......... ユーティリティ関数
+     #INIT .......... 初期化
+     ══════════════════════════════════════════ -->
+
+
+<!-- ══════════════════════════════════════════
+     #BASE リセット・CSS変数・共通スタイル（CSS）
+     ══════════════════════════════════════════ -->
+<style>
+/* --- 全要素リセット --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* --- アプリ全体のカラー・サイズ変数 --- */
+:root {
+  --primary: #8ea2cc;
+  --primary-light: #e9eef7;
+  --primary-lighter: #f1f4f9;
+  --primary-dark: #6b82b0;
+  --primary-pale: #b8c6e0;
+  --accent: #d4868b;
+  --accent-light: #faf0f0;
+  --text: #3d3f50;
+  --text-light: #7a7e92;
+  --text-lighter: #a3a7b8;
+  --bg: #f5f7fb;
+  --card-bg: #ffffff;
+  --border: #d8dde9;
+  --border-light: #e8ecf3;
+  --danger: #d9534f;
+  --danger-light: #fbeaea;
+  --shadow: 0 1px 4px rgba(74, 158, 187, 0.10);
+  --shadow-md: 0 2px 8px rgba(74, 158, 187, 0.14);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --header-h: 50px;
+  --tab-h: 44px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --font: "Helvetica Neue", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+}
+
+/* --- ページ全体の基本設定 --- */
+html, body {
+  height: var(--app-h, 100%); overflow: hidden;
+  font-family: var(--font); font-size: 15px;
+  color: var(--text); background: var(--bg);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* --- フォーム部品・ボタン・画像の共通リセット --- */
+input, textarea, select, button { font-family: inherit; font-size: inherit; }
+button { cursor: pointer; border: none; background: none; color: inherit; }
+img { display: block; max-width: 100%; }
+
+/* --- アプリ全体のラッパー（縦並び・画面いっぱい） --- */
+.app-wrap {
+  display: flex; flex-direction: column;
+  height: 100%; overflow: hidden;
+  padding-top: var(--header-h);
+}
+
+/* --- メインスクロール領域 --- */
+.main-area {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* --- 各画面の表示切替（activeクラスで表示） --- */
+.screen { display: none; min-height: 100%; }
+.screen.active { display: block; }
+#screenMemoForm.active {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-bottom: 0;
+}
+</style>
+
+</head>
+<body>
+<div class="app-wrap">
+
+
+<!-- ══════════════════════════════════════════
+     #HEADER ヘッダー・タブバー（CSS）
+     ══════════════════════════════════════════ -->
+<style>
+/* --- 上部固定ヘッダー --- */
+.header {
+  height: var(--header-h); min-height: var(--header-h);
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 12px;
+  background: var(--primary);
+  color: #fff;
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 100;
+}
+
+/* --- 戻るボタン（初期非表示、画面遷移時にJS制御） --- */
+.header-back {
+  width: 36px; height: 36px;
+  display: none; align-items: center; justify-content: center;
+  border-radius: 50%;
+}
+.header-back:active { background: rgba(255,255,255,0.15); }
+.header-back svg { width: 22px; height: 22px; fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* --- ヘッダータイトル（画面名を動的に変更） --- */
+.header-title {
+  flex: 1; font-size: 17px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* --- ヘッダー右側のアイコンボタン --- */
+.header-btn {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  position: relative;
+}
+.header-btn:active { background: rgba(255,255,255,0.15); }
+.header-btn svg { width: 22px; height: 22px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* --- フィルター適用中のドットインジケーター --- */
+.header-btn.has-filter::after {
+  content: '';
+  position: absolute;
+  top: 5px; right: 5px;
+  width: 8px; height: 8px;
+  background: #ff6b6b;
+  border-radius: 50%;
+  border: 1.5px solid var(--primary);
+}
+
+/* --- ヘッダー内テキストボタン（詳細画面の編集・削除用） --- */
+.header-text-btn {
+  font-size: 14px; font-weight: 500;
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.header-text-btn:active { background: rgba(255,255,255,0.15); }
+.header-text-btn-danger { color: #ffb0b0; }
+.header-text-btn-danger:active { background: rgba(255,100,100,0.15); }
+
+/* --- ドロップダウン共通 --- */
+.dropdown-overlay {
+  position: fixed; inset: 0; z-index: 199;
+  display: none;
+}
+.dropdown-overlay.show { display: block; }
+
+.dropdown-menu {
+  position: fixed;
+  top: var(--header-h);
+  right: 8px;
+  z-index: 200;
+  background: var(--card-bg);
+  border-radius: 0 0 var(--radius) var(--radius);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  min-width: 200px;
+  max-height: 55vh;
+  overflow-y: auto;
+  display: none;
+  padding: 6px 0;
+}
+.dropdown-menu.show { display: block; }
+
+/* --- フィルタードロップダウン幅（2列表示用） --- */
+#filterDropdown {
+  min-width: 280px;
+  right: 8px;
+  left: 8px;
+}
+
+.dropdown-section-title {
+  padding: 8px 16px 4px;
+  font-size: 11px; font-weight: 600;
+  color: var(--text-lighter);
+}
+
+.dropdown-item {
+  padding: 10px 16px 10px 14px;
+  font-size: 14px;
+  display: flex; align-items: center; gap: 6px;
+  color: var(--text);
+}
+.dropdown-item:active { background: var(--primary-lighter); }
+.dropdown-item.active {
+  color: var(--primary);
+  font-weight: 600;
+}
+.dropdown-item .dd-check {
+  width: 18px; text-align: center;
+  font-size: 13px; font-weight: 700;
+  color: var(--primary);
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+/* --- フィルタードロップダウン 2列レイアウト --- */
+.filter-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.filter-column {
+  min-width: 0;
+}
+.filter-column + .filter-column {
+  border-left: 1px solid var(--border-light);
+}
+.filter-column-title {
+  padding: 8px 10px 4px;
+  font-size: 11px; font-weight: 600;
+  color: var(--text-lighter);
+}
+.filter-columns .dropdown-item {
+  padding: 9px 10px 9px 8px;
+  font-size: 13px;
+}
+
+/* --- タブバー（カード／メモ切替） --- */
+.tab-bar {
+  display: flex; height: var(--tab-h); min-height: var(--tab-h);
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+}
+.tab-btn {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 500;
+  color: var(--text-light);
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+.tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+}
+.tab-btn:active { background: var(--primary-lighter); }
+
+/* --- タブアイコン --- */
+.tab-btn svg {
+  width: 22px; height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+</style>
+
+<!-- ----- #HEADER HTML ----- -->
+
+<!-- ヘッダー：戻るボタン、タイトル、ソート、フィルター、設定ボタン -->
+<div class="header">
+  <button class="header-back" id="btnBack" onclick="goBack()">
+    <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <div class="header-title" id="headerTitle">PEG COSME</div>
+  <!-- ソートボタン -->
+  <button class="header-btn" id="btnSort" onclick="toggleSortDropdown()" title="並び替え" style="display:none">
+    <svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
+  </button>
+  <!-- カテゴリフィルターボタン -->
+  <button class="header-btn" id="btnFilter" onclick="toggleFilterDropdown()" title="カテゴリ" style="display:none">
+    <svg viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+  </button>
+  <!-- 詳細画面用：編集・削除ボタン -->
+  <button class="header-text-btn header-text-btn-danger" id="btnDetailDelete" onclick="confirmDeleteProduct()" style="display:none">削除</button>
+  <button class="header-text-btn" id="btnDetailEdit" onclick="editProduct()" style="display:none">編集</button>
+  <!-- メモフォーム用：保存ボタン -->
+  <button class="header-text-btn" id="btnMemoSave" onclick="submitMemo()" style="display:none">保存</button>
+  <!-- 商品フォーム用：保存ボタン -->
+  <button class="header-text-btn" id="btnFormSave" onclick="submitProduct()" style="display:none">保存</button>
+  <!-- 設定ボタン（縦三点） -->
+  <button class="header-btn" id="btnSettings" onclick="showScreen('settings')" title="設定">
+    <svg viewBox="0 0 24 24">
+      <circle cx="12" cy="5" r="2" fill="#fff" stroke="none"/>
+      <circle cx="12" cy="12" r="2" fill="#fff" stroke="none"/>
+      <circle cx="12" cy="19" r="2" fill="#fff" stroke="none"/>
+    </svg>
+  </button>
+</div>
+
+<!-- ドロップダウン用オーバーレイ（タップで閉じる） -->
+<div class="dropdown-overlay" id="dropdownOverlay" onclick="closeAllDropdowns()"></div>
+
+<!-- ソートドロップダウンメニュー -->
+<div class="dropdown-menu" id="sortDropdown"></div>
+
+<!-- カテゴリフィルタードロップダウンメニュー -->
+<div class="dropdown-menu" id="filterDropdown"></div>
+
+<!-- タブバー：カード（商品管理）とメモの切替 -->
+<div class="tab-bar" id="tabBar">
+  <!-- アイテムタブ：2×2グリッドアイコン -->
+  <button class="tab-btn active" data-tab="card" onclick="switchTab('card')" title="アイテム">
+    <svg viewBox="0 0 24 24">
+  <line x1="4" y1="6" x2="4" y2="6.01" stroke-width="3.2" stroke-linecap="round"/>
+  <line x1="4" y1="12" x2="4" y2="12.01" stroke-width="3.2" stroke-linecap="round"/>
+  <line x1="4" y1="18" x2="4" y2="18.01" stroke-width="3.2" stroke-linecap="round"/>
+  <line x1="9" y1="6" x2="20" y2="6"/>
+  <line x1="9" y1="12" x2="20" y2="12"/>
+  <line x1="9" y1="18" x2="20" y2="18"/>
+</svg>
+  </button>
+  <!-- メモタブ：折り目のある紙アイコン -->
+  <button class="tab-btn" data-tab="memo" onclick="switchTab('memo')" title="メモ">
+    <svg viewBox="0 0 24 24">
+      <path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9l-5-6z"/>
+      <path d="M14 3v6h5"/>
+    </svg>
+  </button>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     #SEARCH 検索バー（CSS）
+     ══════════════════════════════════════════ -->
+<style>
+/* --- 検索バー外枠 --- */
+.search-bar {
+  padding: 10px 12px 6px;
+  background: var(--bg);
+}
+
+/* --- 検索入力欄のラッパー --- */
+.search-wrap {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 10px;
+  height: 40px;
+}
+.search-wrap svg { width: 18px; height: 18px; stroke: var(--text-lighter); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.search-wrap input {
+  flex: 1; border: none; outline: none;
+  background: none; height: 100%;
+  font-size: 14px; color: var(--text);
+}
+.search-wrap input::placeholder { color: var(--text-lighter); }
+
+/* --- クリアボタン（入力時のみ表示） --- */
+.search-clear {
+  width: 22px; height: 22px;
+  display: none; align-items: center; justify-content: center;
+  border-radius: 50%; flex-shrink: 0;
+}
+.search-clear.show { display: flex; }
+.search-clear svg { width: 16px; height: 16px; stroke: var(--text-lighter); }
+
+/* --- 検索ハイライト --- */
+mark.hl {
+  background: #ffe066;
+  color: inherit;
+  padding: 0 1px;
+  border-radius: 2px;
+}
+
+</style>
+
+<!-- ----- #SEARCH HTML ----- -->
+
+<!-- 検索バー：ブランド名・商品名・成分などを横断検索 -->
+<div class="search-bar" id="searchBar">
+  <div class="search-wrap">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="searchInput" placeholder="検索..." oninput="onSearch()">
+    <button class="search-clear" id="searchClear" onclick="clearSearch()">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+</div>
+
+
+<!-- ========== メインスクロール領域 開始 ========== -->
+<div class="main-area" id="mainArea">
+
+
+<!-- ══════════════════════════════════════════
+     #BRAND ブランド一覧画面・空状態・FAB（CSS）
+     ══════════════════════════════════════════ -->
+<style>
+/* --- ブランドカード一覧 --- */
+.brand-list {
+  padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.brand-card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px;
+  transition: box-shadow 0.15s;
+}
+.brand-card:active { box-shadow: var(--shadow-md); }
+.brand-info { flex: 1; min-width: 0; }
+.brand-name {
+  font-size: 15px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.brand-count {
+  font-size: 12px; color: var(--text-light); margin-top: 2px;
+}
+.brand-arrow { flex-shrink: 0; width: 18px; height: 18px; stroke: var(--text-lighter); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* --- 空状態（データ0件時の案内表示） --- */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center;
+  padding: 60px 20px; text-align: center;
+  color: var(--text-lighter);
+}
+.empty-state svg { width: 48px; height: 48px; stroke: var(--primary-pale); fill: none; stroke-width: 1.5; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; line-height: 1.6; }
+
+/* --- FAB（右下の丸い追加ボタン） --- */
+.fab {
+  position: fixed; bottom: 30px; right: 20px;
+  width: 54px; height: 54px;
+  background: var(--primary);
+  color: #fff; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: none;
+  z-index: 50;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.fab:active { transform: scale(0.92); box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
+.fab svg { width: 26px; height: 26px; stroke: #fff; fill: none; stroke-width: 2.2; stroke-linecap: round; }
+</style>
+
+<!-- ----- #BRAND HTML ----- -->
+
+<!-- ブランド一覧画面（初期表示画面） -->
+<div class="screen active" id="screenBrand">
+  <div class="brand-list" id="brandList"></div>
+  <div class="empty-state" id="brandEmpty">
+    <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="12" y2="15"/></svg>
+    <p>まだ何も登録されていません<br>＋ボタンからカードを追加してください</p>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     #PRODUCT 商品一覧画面（CSS）
+     ══════════════════════════════════════════ -->
+<style>
+/* --- 商品カード一覧 --- */
+.product-list {
+  padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.product-card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: flex; gap: 12px;
+  padding: 12px;
+  transition: box-shadow 0.15s;
+}
+.product-card:active { box-shadow: var(--shadow-md); }
+
+/* --- 商品サムネイル（左の正方形エリア） --- */
+.product-thumb {
+  width: 64px; height: 64px; flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: var(--primary-lighter);
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.product-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.product-thumb svg { width: 28px; height: 28px; stroke: var(--primary-pale); fill: none; stroke-width: 1.5; }
+
+/* --- 商品名・カテゴリ・価格 --- */
+.product-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.product-name {
+  font-size: 14px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.product-category {
+  display: inline-block;
+  font-size: 11px; font-weight: 500;
+  color: var(--primary-dark);
+  background: var(--primary-light);
+  padding: 1px 7px; border-radius: 4px;
+  width: fit-content;
+}
+.product-price {
+  font-size: 12px; color: var(--text-light);
+}
+.product-brand-label {
+  font-size: 11px; color: var(--text-lighter);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+</style>
+
+<!-- ----- #PRODUCT HTML ----- -->
+
+<!-- 商品一覧画面（ブランドをタップした先） -->
+<div class="screen" id="screenProducts">
+  <div class="product-list" id="productList"></div>
+  <div class="empty-state" id="productEmpty">
+    <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="12" y2="15"/></svg>
+    <p>商品が登録されていません<br>＋ボタンから追加してください</p>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     #DETAIL 商品詳細画面（CSS）
+     ══════════════════════════════════════════ -->
+<style>
+/* --- 詳細画面のレイアウト --- */
+.detail-screen { padding: 0; }
+
+/* --- 商品画像エリア --- */
+.detail-image-area {
+  width: 100%;
+  background: var(--primary-lighter);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  max-height: 300px; overflow: hidden;
+}
+.detail-image-area img { width: 100%; max-height: 270px; object-fit: contain; }
+.detail-image-area svg { width: 48px; height: 48px; stroke: var(--primary-pale); fill: none; stroke-width: 1.5; padding: 40px 0; }
+
+/* --- スワイプナビゲーション インジケーター --- */
+.detail-nav-indicator {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 4px;
+}
+.detail-nav-indicator.show {
+  display: none;
+}
+.detail-nav-text {
+  font-size: 12px;
+  color: var(--text-lighter);
+  font-weight: 500;
+}
+.detail-nav-arrow {
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  color: var(--primary);
+}
+.detail-nav-arrow.disabled {
+  opacity: 0.25;
+}
+.detail-nav-arrow svg {
+  width: 16px; height: 16px;
+  fill: none; stroke: currentColor;
+  stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* --- スワイプ時のスライドアニメーション --- */
+@keyframes slideInFromRight {
+  from { transform: translateX(40px); opacity: 0.4; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes slideInFromLeft {
+  from { transform: translateX(-40px); opacity: 0.4; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+.detail-slide-left {
+  animation: slideInFromRight 0.22s ease-out;
+}
+.detail-slide-right {
+  animation: slideInFromLeft 0.22s ease-out;
+}
+
+/* --- 詳細本文エリア --- */
+.detail-body { padding: 16px; }
+.detail-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.detail-brand { font-size: 13px; color: var(--text-light); margin-bottom: 12px; }
+
+/* --- メタ情報タグ（カテゴリ・容量・価格・購入時期） --- */
+.detail-meta {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-bottom: 16px;
+}
+.detail-tag {
+  font-size: 12px; font-weight: 500;
+  padding: 3px 10px; border-radius: 5px;
+  background: var(--primary-light); color: var(--primary-dark);
+}
+
+/* --- セクション（成分・メモなどの各ブロック） --- */
+.detail-section { margin-bottom: 20px; }
+.detail-section-label {
+  font-size: 12px; font-weight: 600;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.detail-section-content {
+  font-size: 14px; line-height: 1.7;
+  white-space: pre-wrap; word-break: break-all;
+}
+.detail-section-content.memo-content { word-break: normal; }
+
+/* --- コピーボタン（成分コピー・全情報コピー） --- */
+.detail-copy-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--primary);
+  padding: 4px 10px; border-radius: 5px;
+  border: 1px solid var(--primary);
+  margin-top: 6px;
+}
+.detail-copy-btn:active { background: var(--primary-light); }
+
+</style>
+
+<!-- ----- #DETAIL HTML ----- -->
+
+<!-- 商品詳細画面（商品カードをタップした先） -->
+<div class="screen detail-screen" id="screenDetail"
+  ontouchstart="onDetailTouchStart(event)"
+  ontouchend="onDetailTouchEnd(event)">
+  <!-- 商品画像 -->
+  <div class="detail-image-area" id="detailImage"></div>
+  <!-- スワイプナビゲーション インジケーター -->
+  <div class="detail-nav-indicator" id="detailNavIndicator">
+    <div class="detail-nav-arrow" id="detailNavPrev" onclick="navigateDetail(-1)">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+    <span class="detail-nav-text" id="detailNavText"></span>
+    <div class="detail-nav-arrow" id="detailNavNext" onclick="navigateDetail(1)">
+      <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+    </div>
+  </div>
+  <!-- 詳細本文（JSで動的に生成） -->
+  <div class="detail-body" id="detailBody"></div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     #FORM 商品登録・編集フォーム（CSS）
+     ══════════════════════════════════════════ -->
+<style>
+/* --- フォーム画面の基本レイアウト --- */
+.form-screen { padding: 0 0 40px; }
+/* キーボード表示時は下部余白を詰める */
+.keyboard-open .form-screen { padding-bottom: 8px; }
+.form-body { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+/* --- フォーム部品共通 --- */
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-label { font-size: 13px; font-weight: 600; color: var(--text-light); }
+.form-required::after { content: " *"; color: var(--accent); }
+
+/* --- テキスト入力 --- */
+.form-input {
+  height: 42px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 12px; font-size: 15px;
+  background: var(--card-bg); color: var(--text);
+  outline: none; transition: border-color 0.2s;
+}
+.form-input:focus { border-color: var(--primary); }
+
+/* --- テキストエリア（成分・メモ入力用） --- */
+.form-textarea {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px; font-size: 14px;
+  background: var(--card-bg); color: var(--text);
+  outline: none; resize: vertical;
+  min-height: 100px; line-height: 1.6;
+  transition: border-color 0.2s;
+}
+.form-textarea:focus { border-color: var(--primary); }
+
+/* --- 全成分テキストエリア（個別サイズ） --- */
+#formIngredients { min-height: 200px; }
+
+/* --- メモテキストエリア（個別サイズ） --- */
+#formMemo { min-height: 100px; }
+
+/* --- セレクトボックス（ブランド・カテゴリ選択用） --- */
+.form-select {
+  height: 42px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 12px; font-size: 15px;
+  background: var(--card-bg); color: var(--text);
+  outline: none; -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b3' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+.form-select:focus { border-color: var(--primary); }
+.form-select.placeholder { color: var(--text-lighter); }
+.form-select.placeholder option { color: var(--text); }
+
+/* --- 画像サムネイルグリッド --- */
+.form-image-grid {
+  display: flex; gap: 10px;
+}
+.form-image-slot {
+  width: calc((100% - 20px) / 3);
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+.form-image-slot.has-image {
+  border: 1px solid var(--border-light);
+}
+.form-image-slot img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.form-image-slot .form-image-remove {
+  position: absolute; top: 4px; right: 4px;
+  width: 24px; height: 24px;
+  background: rgba(0,0,0,0.5); color: #fff;
+  border-radius: 50%;
+  display: none; align-items: center; justify-content: center;
+  z-index: 5;
+}
+.form-image-slot.has-image .form-image-remove { display: flex; }
+.form-image-slot .form-image-remove svg {
+  width: 14px; height: 14px; stroke: #fff; fill: none; stroke-width: 2.5;
+}
+
+/* --- 画像追加スロット（＋ボタン） --- */
+.form-image-add {
+  width: calc((100% - 20px) / 3);
+  aspect-ratio: 1 / 1;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-sm);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px;
+  background: var(--primary-lighter);
+  flex-shrink: 0;
+}
+.form-image-add svg {
+  width: 24px; height: 24px; stroke: var(--primary-pale); fill: none; stroke-width: 2;
+}
+.form-image-add span {
+  font-size: 11px; color: var(--text-lighter);
+}
+
+/* --- 成分整形ボタン --- */
+.form-ingredient-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--primary);
+  padding: 4px 10px; border-radius: 5px;
+  border: 1px solid var(--primary);
+  align-self: flex-start;
+}
+.form-ingredient-btn:active { background: var(--primary-light); }
+
+/* --- 登録・更新ボタン --- */
+</style>
+
+<!-- ----- #FORM HTML ----- -->
+
+<!-- 商品登録・編集フォーム画面 -->
+<div class="screen form-screen" id="screenForm">
+  <div class="form-body">
+    <!-- 商品画像（最大3枚） -->
+    <div class="form-group">
+      <label class="form-label">商品画像（3枚まで）</label>
+      <div class="form-image-grid" id="formImageGrid"></div>
+      <input type="file" id="imageInput" accept="image/*" style="display:none" onchange="onImageSelected(event)">
+    </div>
+    <!-- ブランド選択 -->
+    <div class="form-group">
+      <label class="form-label form-required">ブランド名</label>
+      <select class="form-select" id="formBrand" onchange="onFormBrandChange(event)">
+        <option value="">ブランドなし（未分類）</option>
+      </select>
+    </div>
+    <!-- 商品名（必須） -->
+    <div class="form-group">
+      <label class="form-label form-required">商品名</label>
+      <input type="text" class="form-input" id="formName" placeholder="例：スーパーサンシールド ブライトフィット" autocomplete="off">
+    </div>
+    <!-- カテゴリ選択（メイク・スキンケア） -->
+    <div class="form-group">
+      <label class="form-label">カテゴリ</label>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select class="form-select" id="formCategoryMakeup" style="flex:1;">
+          <option value="">メイク</option>
+        </select>
+        <button type="button" onclick="openAddCategoryModal('makeup')" style="
+          width:42px; height:42px; flex-shrink:0;
+          border:1px solid var(--border); border-radius:var(--radius-sm);
+          background:var(--card-bg); color:var(--primary);
+          font-size:22px; font-weight:600;
+          display:flex; align-items:center; justify-content:center;
+        ">＋</button>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+        <select class="form-select" id="formCategorySkincare" style="flex:1;">
+          <option value="">スキンケア</option>
+        </select>
+        <button type="button" onclick="openAddCategoryModal('skincare')" style="
+          width:42px; height:42px; flex-shrink:0;
+          border:1px solid var(--border); border-radius:var(--radius-sm);
+          background:var(--card-bg); color:var(--primary);
+          font-size:22px; font-weight:600;
+          display:flex; align-items:center; justify-content:center;
+        ">＋</button>
+      </div>
+    </div>
+    <!-- 容量 -->
+    <div class="form-group">
+      <label class="form-label">容量</label>
+      <input type="text" class="form-input" id="formVolume" placeholder="例：40g / 30mL" autocomplete="off">
+    </div>
+    <!-- 価格 -->
+    <div class="form-group">
+      <label class="form-label">価格</label>
+      <input type="text" class="form-input" id="formPrice" placeholder="例：3300" autocomplete="off">
+    </div>
+    <!-- 購入時期 -->
+    <div class="form-group">
+      <label class="form-label">購入時期</label>
+      <input type="month" class="form-input" id="formPurchaseDate">
+    </div>
+    <!-- 全成分 -->
+    <div class="form-group">
+      <label class="form-label">全成分</label>
+      <textarea class="form-textarea" id="formIngredients" rows="4" placeholder="成分テキストを貼り付け"></textarea>
+      <button class="form-ingredient-btn" onclick="formatIngredients()">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h13"/></svg>
+        成分を整形
+      </button>
+    </div>
+    <!-- メモ -->
+    <div class="form-group">
+      <label class="form-label">メモ</label>
+      <textarea class="form-textarea" id="formMemo" rows="3" placeholder="使用感、肌との相性など"></textarea>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     #MEMO メモタブ（一覧・詳細・フォーム）（CSS）
+     ══════════════════════════════════════════ -->
+<style>
+/* --- メモカード一覧 --- */
+.memo-list {
+  padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.memo-card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+.memo-card:active { box-shadow: var(--shadow-md); }
+.memo-title {
+  font-size: 14px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+.memo-preview {
+  font-size: 13px; color: var(--text-light);
+  display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+  line-height: 1.5;
+}
+.memo-date {
+  font-size: 11px; color: var(--text-lighter); margin-top: 6px;
+}
+
+/* --- メモフォーム --- */
+.memo-form-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.memo-form-body .form-group:last-child {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.memo-form-body .form-textarea {
+  flex: 1;
+  min-height: 120px;
+  resize: none;
+}
+</style>
+
+<!-- ----- #MEMO HTML ----- -->
+
+<!-- メモ一覧画面 -->
+<div class="screen" id="screenMemo">
+  <div class="memo-list" id="memoList"></div>
+  <div class="empty-state" id="memoEmpty">
+    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    <p>メモがありません<br>＋ボタンから追加してください</p>
+  </div>
+</div>
+
+<!-- メモ登録・編集フォーム画面 -->
+<div class="screen form-screen" id="screenMemoForm">
+  <div class="memo-form-body">
+    <div class="form-group">
+      <label class="form-label form-required">タイトル</label>
+      <input type="text" class="form-input" id="memoFormTitle" placeholder="タイトルを入力">
+    </div>
+    <div class="form-group">
+      <label class="form-label">本文</label>
+      <textarea class="form-textarea" id="memoFormBody" rows="8" placeholder="メモを入力"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- メモ詳細画面 -->
+<div class="screen" id="screenMemoDetail">
+  <div class="detail-body" id="memoDetailBody"></div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     #SETTINGS 設定画面（CSS）
+     ══════════════════════════════════════════ -->
+<style>
+/* --- 設定画面のレイアウト --- */
+.settings-screen { padding: 16px; }
+.settings-section {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 12px;
+}
+.settings-section-title {
+  font-size: 14px; font-weight: 700;
+  margin-bottom: 8px;
+}
+.settings-info {
+  font-size: 13px; color: var(--text-light);
+  line-height: 1.6; margin-bottom: 12px;
+}
+.settings-date {
+  font-size: 12px; color: var(--text-lighter);
+  margin-bottom: 8px;
+}
+
+/* --- エクスポート・インポートボタン --- */
+.settings-btn {
+  width: 100%; height: 42px;
+  border-radius: 8px;
+  font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.settings-export { background: var(--primary); color: #fff; }
+.settings-export:active { background: var(--primary-dark); }
+.settings-import { background: var(--card-bg); color: var(--primary); border: 1.5px solid var(--primary); }
+.settings-import:active { background: var(--primary-lighter); }
+
+/* --- バックアップ未実施の警告バナー --- */
+.backup-reminder {
+  background: var(--accent-light);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  font-size: 13px; color: var(--accent);
+  line-height: 1.5;
+  margin-bottom: 12px;
+  display: none;
+}
+.backup-reminder.show { display: block; }
+
+/* --- 設定メニュー項目（リンク風ボタン） --- */
+.settings-menu-item {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; padding: 14px 4px;
+  font-size: 15px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.settings-menu-item:last-child { border-bottom: none; }
+.settings-menu-item:active { background: var(--primary-lighter); }
+.settings-menu-item svg {
+  width: 20px; height: 20px; flex-shrink: 0;
+  fill: none; stroke: var(--text-light);
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.settings-menu-item .menu-label { flex: 1; }
+.settings-menu-item .menu-arrow {
+  width: 18px; height: 18px;
+  fill: none; stroke: var(--text-lighter);
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* --- カテゴリ管理画面 --- */
+.cat-manage-screen { padding: 16px; }
+.cat-list-card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+.cat-list { margin-bottom: 12px; }
+.cat-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.cat-item:last-child { border-bottom: none; }
+.cat-item-name {
+  flex: 1;
+  font-size: 14px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cat-item-count {
+  font-size: 12px; color: var(--text-lighter);
+  margin-right: 4px;
+  white-space: nowrap;
+}
+.cat-item-btn {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cat-item-btn:active { background: var(--primary-lighter); }
+.cat-item-btn svg {
+  width: 16px; height: 16px;
+  fill: none; stroke: var(--text-light);
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.cat-item-btn.delete svg { stroke: var(--accent); }
+.cat-add-btn {
+  width: 100%; height: 40px;
+  border-radius: 8px;
+  font-size: 14px; font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-lighter);
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.cat-add-btn:active { background: var(--primary-light); }
+
+/* --- モーダル内テキスト入力 --- */
+.modal-input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  margin-top: 8px;
+  box-sizing: border-box;
+  outline: none;
+}
+.modal-input:focus { border-color: var(--primary); }
+
+/* --- カテゴリグループ見出し --- */
+.cat-group-header {
+  font-size: 13px; font-weight: 700;
+  color: var(--primary);
+  padding: 8px 0 4px;
+  border-bottom: 1px solid var(--border-light);
+  margin-bottom: 4px;
+}
+/* --- グループ別カテゴリ追加ボタン --- */
+.cat-add-group-btn {
+  display: block; width: 100%;
+  padding: 8px 0; margin-top: 4px;
+  font-size: 13px; font-weight: 600;
+  color: var(--primary);
+  background: none; border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+.cat-add-group-btn:active { background: var(--primary-lighter); }
+
+/* --- カテゴリ並び替え ▲▼ ボタン --- */
+.cat-item-order-btn {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+  color: var(--text-lighter);
+  font-size: 14px;
+}
+.cat-item-order-btn:active { background: var(--primary-lighter); }
+.cat-item-order-btn.disabled {
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+/* --- ブランド管理画面（カテゴリ管理と共通スタイルを流用） --- */
+.brand-manage-screen { padding: 16px; }
+
+</style>
+
+<!-- ----- #SETTINGS HTML ----- -->
+
+<!-- 設定画面（メニュー） -->
+<div class="screen settings-screen" id="screenSettings">
+
+  <!-- 設定メニュー -->
+  <div class="settings-section">
+    <button class="settings-menu-item" onclick="showScreen('categoryManage')">
+      <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+      <span class="menu-label">カテゴリ管理</span>
+      <svg class="menu-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+    <button class="settings-menu-item" onclick="showScreen('brandManage')">
+      <svg viewBox="0 0 24 24"><path d="M20 7h-4V4a1 1 0 00-1-1H9a1 1 0 00-1 1v3H4a1 1 0 00-1 1v11a2 2 0 002 2h14a2 2 0 002-2V8a1 1 0 00-1-1zM10 5h4v2h-4V5z"/></svg>
+      <span class="menu-label">ブランド管理</span>
+      <svg class="menu-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+  </div>
+
+  <!-- データ更新済み警告 -->
+  <div class="backup-reminder" id="backupReminder">
+    ⚠ 前回のバックアップ以降にデータが更新されています。バックアップをお勧めします。
+  </div>
+
+  <!-- エクスポート -->
+  <div class="settings-section">
+    <div class="settings-section-title">エクスポート（書き出し）</div>
+    <div class="settings-info">全データをJSONファイルとして端末に保存します。</div>
+    <div class="settings-date" id="lastBackupDate">最終バックアップ：なし</div>
+    <button class="settings-btn settings-export" onclick="exportData()">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      バックアップを保存
+    </button>
+  </div>
+
+  <!-- インポート -->
+  <div class="settings-section">
+    <div class="settings-section-title">インポート（読み込み）</div>
+    <div class="settings-info">JSONファイルからデータを復元します。現在のデータは上書きされます。</div>
+    <button class="settings-btn settings-import" onclick="importData()">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      ファイルを選択して復元
+    </button>
+    <input type="file" id="importInput" accept=".json" style="display:none" onchange="onImportSelected(event)">
+  </div>
+
+</div>
+
+<!-- カテゴリ管理画面（設定 → カテゴリ管理で遷移） -->
+<div class="screen cat-manage-screen" id="screenCategoryManage">
+  <div class="cat-list-card">
+    <div class="cat-list" id="catList"></div>
+  </div>
+
+</div>
+
+<!-- ブランド管理画面（設定 → ブランド管理で遷移） -->
+<div class="screen brand-manage-screen" id="screenBrandManage">
+  <div class="cat-list-card">
+    <div class="cat-list" id="brandManageList"></div>
+  </div>
+</div>
+
+
+<!-- ========== /main-area ========== -->
+
+<!-- FAB（右下の丸い追加ボタン） -->
+<button class="fab" id="fab" onclick="onFabClick()">
+  <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
+
+</div><!-- /app-wrap -->
+
+
+<!-- ══════════════════════════════════════════
+     #MODAL モーダル共通（CSS）（※app-wrap外）
+     ══════════════════════════════════════════ -->
+<style>
+/* --- モーダルの背景オーバーレイ --- */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 200;
+  display: none; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.show { display: flex; }
+
+/* --- モーダル本体 --- */
+.modal-box {
+  background: var(--card-bg);
+  border-radius: 14px;
+  width: 100%; max-width: 320px;
+  overflow: hidden;
+}
+.modal-header {
+  padding: 16px 20px 8px;
+  font-size: 16px; font-weight: 700;
+}
+.modal-content {
+  padding: 8px 20px 16px;
+  font-size: 14px; color: var(--text-light);
+  line-height: 1.6;
+}
+
+/* --- モーダル内のテキスト入力（ブランド名追加時など） --- */
+.modal-input {
+  width: 100%; height: 42px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 12px; font-size: 15px;
+  background: var(--card-bg); color: var(--text);
+  outline: none; margin-top: 4px;
+}
+.modal-input:focus { border-color: var(--primary); }
+
+/* --- モーダル下部のアクションボタン --- */
+.modal-actions {
+  display: flex; border-top: 1px solid var(--border-light);
+}
+.modal-actions button {
+  flex: 1; height: 46px;
+  font-size: 15px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-actions button + button { border-left: 1px solid var(--border-light); }
+.modal-cancel { color: var(--text-light); }
+.modal-cancel:active { background: var(--bg); }
+.modal-ok { color: var(--primary); }
+.modal-ok:active { background: var(--primary-lighter); }
+.modal-danger { color: var(--danger); }
+.modal-danger:active { background: var(--danger-light); }
+.modal-primary { background: var(--primary); color: #fff; }
+
+/* --- ブランド移動先リスト --- */
+.modal-brand-list {
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 240px; overflow-y: auto;
+  margin-top: 4px;
+}
+.modal-brand-option {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: 14px;
+  cursor: pointer;
+}
+.modal-brand-option:active { background: var(--primary-pale); }
+.modal-brand-unassign { color: var(--text-light); }
+
+.modal-brand-new { color: var(--primary); font-weight: 600; }
+
+.modal-delete {
+  background: none; border: none;
+  color: #e05555; font-size: 15px; font-weight: 600;
+  padding: 10px 16px; cursor: pointer;
+}
+.modal-delete:active { opacity: 0.7; }
+
+</style>
+
+<!-- ----- #MODAL HTML ----- -->
+
+<!-- モーダル（確認ダイアログ・ブランド追加など共通で使用） -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box">
+    <div class="modal-header" id="modalHeader"></div>
+    <div class="modal-content" id="modalContent"></div>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     #LIGHTBOX 画像全画面モーダル（CSS）（※app-wrap外）
+     ══════════════════════════════════════════ -->
+<style>
+/* --- ライトボックス（画像全画面表示） --- */
+.lightbox-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 250;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.lightbox-overlay.show { display: flex; }
+
+/* --- 閉じるボタン --- */
+.lightbox-close {
+  position: absolute; top: 12px; right: 12px;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  z-index: 10;
+}
+.lightbox-close:active { background: rgba(255,255,255,0.15); }
+.lightbox-close svg {
+  width: 28px; height: 28px; stroke: #fff; fill: none;
+  stroke-width: 2; stroke-linecap: round;
+}
+
+/* --- 画像表示エリア --- */
+.lightbox-image-wrap {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  padding: 60px 0;
+}
+.lightbox-image-wrap img {
+  max-width: 100%; max-height: 100%;
+  object-fit: contain;
+}
+
+/* --- ドットインジケーター --- */
+.lightbox-dots {
+  position: absolute; bottom: 24px;
+  display: flex; gap: 8px;
+  z-index: 10;
+}
+.lightbox-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.35);
+  transition: background 0.2s;
+}
+.lightbox-dot.active {
+  background: #fff;
+}
+</style>
+
+<!-- ----- #LIGHTBOX HTML ----- -->
+
+<!-- 画像全画面モーダル（詳細画面の画像タップで開く） -->
+<div class="lightbox-overlay" id="lightbox"
+  ontouchstart="onLightboxTouchStart(event)"
+  ontouchend="onLightboxTouchEnd(event)">
+  <button class="lightbox-close" onclick="closeLightbox()">
+    <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+  <div class="lightbox-image-wrap" id="lightboxImageWrap"></div>
+  <div class="lightbox-dots" id="lightboxDots"></div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     #TOAST トースト通知（CSS）（※app-wrap外）
+     ══════════════════════════════════════════ -->
+<style>
+/* --- 画面下部に一時表示される通知バー --- */
+.toast {
+  position: fixed; bottom: 80px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--text);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px; font-weight: 500;
+  z-index: 300;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+</style>
+
+<!-- ----- #TOAST HTML ----- -->
+
+<!-- トースト通知（操作結果のフィードバック表示） -->
+<div class="toast" id="toast"></div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     JavaScript（以下、全機能のロジックをまとめて配置）
+     ══════════════════════════════════════════════════════════════ -->
+<script>
+
+
+/* ══════════════════════════════════════════
+   #DB IndexedDB操作
+   ══════════════════════════════════════════ */
+
+const DB_NAME = 'PEGCosmeDB';
+const DB_VERSION = 3;
+let db = null;
+
+// --- DB接続を開く（初回はストア作成も行う） ---
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const d = e.target.result;
+      const tx = e.target.transaction;
+      // ブランドストア（キー: id、名前にユニーク索引）
+      if (!d.objectStoreNames.contains('brands')) {
+        const bs = d.createObjectStore('brands', { keyPath: 'id' });
+        bs.createIndex('name', 'name', { unique: true });
+      }
+      // 商品ストア（キー: id、brandIdで検索可能）
+      if (!d.objectStoreNames.contains('products')) {
+        const ps = d.createObjectStore('products', { keyPath: 'id' });
+        ps.createIndex('brandId', 'brandId', { unique: false });
+      }
+      // メモストア
+      if (!d.objectStoreNames.contains('memos')) {
+        d.createObjectStore('memos', { keyPath: 'id' });
+      }
+      // メタ情報ストア（最終バックアップ日時など）
+      if (!d.objectStoreNames.contains('meta')) {
+        d.createObjectStore('meta', { keyPath: 'key' });
+      }
+      // カテゴリストア（v2で追加、v3でgroup付き）
+      if (!d.objectStoreNames.contains('categories')) {
+        const cs = d.createObjectStore('categories', { keyPath: 'id' });
+        cs.createIndex('name', 'name', { unique: true });
+        // デフォルトカテゴリ（グループ付き）
+        const defaults = [
+          { name: '下地', group: 'makeup' },
+          { name: 'パウダーファンデ', group: 'makeup' },
+          { name: 'コンシーラー', group: 'makeup' },
+          { name: 'パウダー', group: 'makeup' },
+          { name: 'アイシャドウ', group: 'makeup' },
+          { name: '化粧水', group: 'skincare' },
+          { name: 'フェイスクリーム', group: 'skincare' }
+        ];
+        defaults.forEach((cat, i) => {
+          cs.put({ id: genId() + String(i), name: cat.name, group: cat.group, order: i });
+        });
+      }
+
+      // v2→v3アップグレード：既存カテゴリにgroup付与
+      if (e.oldVersion >= 2 && e.oldVersion < 3) {
+        const catStore = tx.objectStore('categories');
+        const skincareKW = ['化粧水','乳液','美容液','セラム','クリーム','クレンジング','洗顔','パック','マスク','トナー','エッセンス','ローション','オイル'];
+        const cursorReq = catStore.openCursor();
+        cursorReq.onsuccess = (ev) => {
+          const cursor = ev.target.result;
+          if (cursor) {
+            const cat = cursor.value;
+            if (!cat.group) {
+              cat.group = skincareKW.some(kw => cat.name.includes(kw)) ? 'skincare' : 'makeup';
+              cursor.update(cat);
+            }
+            cursor.continue();
+          }
+        };
+      }
+    };
+    req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+// --- 既存商品のcategoryをグループ対応に移行（v3で一度だけ実行） ---
+async function migrateProductCategories() {
+  const migrated = await dbGet('meta', 'migratedToGroupedCats');
+  if (migrated) return;
+
+  const cats = await dbGetAll('categories');
+  const products = await dbGetAll('products');
+
+  for (const p of products) {
+    // 旧形式（categoryのみ）→ 新形式（categoryMakeup / categorySkincare）
+    if (p.category !== undefined && p.categoryMakeup === undefined && p.categorySkincare === undefined) {
+      const cat = cats.find(c => c.name === p.category);
+      if (cat && cat.group === 'skincare') {
+        p.categorySkincare = p.category;
+        p.categoryMakeup = '';
+      } else {
+        p.categoryMakeup = p.category || '';
+        p.categorySkincare = '';
+      }
+      delete p.category;
+      await dbPut('products', p);
+    }
+  }
+
+  await dbPut('meta', { key: 'migratedToGroupedCats', value: true });
+}
+
+// --- トランザクション取得ヘルパー ---
+function dbTx(store, mode = 'readonly') {
+  const tx = db.transaction(store, mode);
+  return tx.objectStore(store);
+}
+
+// --- 全件取得 ---
+function dbGetAll(store) {
+  return new Promise((resolve, reject) => {
+    const req = dbTx(store).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// --- キー指定で1件取得 ---
+function dbGet(store, key) {
+  return new Promise((resolve, reject) => {
+    const req = dbTx(store).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// --- データを追加または上書き保存 ---
+function dbPut(store, data) {
+  return new Promise((resolve, reject) => {
+    const req = dbTx(store, 'readwrite').put(data);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// --- キー指定で1件削除 ---
+function dbDelete(store, key) {
+  return new Promise((resolve, reject) => {
+    const req = dbTx(store, 'readwrite').delete(key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// --- ストア内の全データを削除（インポート時に使用） ---
+function dbClear(store) {
+  return new Promise((resolve, reject) => {
+    const req = dbTx(store, 'readwrite').clear();
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// --- ユニークID生成（タイムスタンプ＋ランダム文字列） ---
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+// --- データ更新日時を記録（バックアップ警告の判定に使用） ---
+async function markDataUpdated() {
+  await dbPut('meta', { key: 'lastUpdated', value: new Date().toISOString() });
+}
+
+
+/* ══════════════════════════════════════════
+   #STATE 画面遷移・状態管理
+   ══════════════════════════════════════════ */
+
+// --- カテゴリ一覧（DBから読み込む） ---
+let allCategories = [];
+
+// --- アプリの状態変数 ---
+let currentTab = 'card';        // 現在のタブ（'card' or 'memo'）
+let currentScreen = 'brand';    // 現在表示中の画面名
+let screenHistory = [];         // 画面遷移の履歴（戻る用）
+let currentBrandId = null;      // 選択中のブランドID
+let currentProductId = null;    // 選択中の商品ID
+let editingProductId = null;    // 編集中の商品ID（新規時はnull）
+let currentMemoId = null;       // 選択中のメモID
+let editingMemoId = null;       // 編集中のメモID（新規時はnull）
+let formImages = [];            // フォームで選択された画像のBase64データ配列（最大3枚）
+
+let isPopState = false;         // popstateイベント処理中フラグ
+
+// --- ソート・フィルター状態 ---
+let currentSort = 'createdAt_desc';       // カードタブのソート（デフォルト：登録日新しい順）
+let currentMemoSort = 'date_desc';        // メモタブのソート（デフォルト：日付新しい順）
+let currentCategoryFilter = null;         // カテゴリフィルター（null＝すべて）
+
+// --- カードタブ ソート選択肢の定義 ---
+const SORT_OPTIONS = [
+  { key: 'createdAt_desc',    label: '登録日（新しい順）' },
+  { key: 'createdAt_asc',     label: '登録日（古い順）' },
+  { key: 'purchaseDate_desc', label: '購入時期（新しい順）' },
+  { key: 'purchaseDate_asc',  label: '購入時期（古い順）' },
+  { key: 'price_desc',        label: '価格（高い順）' },
+  { key: 'price_asc',         label: '価格（安い順）' },
+  { key: 'name_asc',          label: '名前順（あ→わ）' },
+];
+
+// --- メモタブ ソート選択肢の定義 ---
+const MEMO_SORT_OPTIONS = [
+  { key: 'date_desc', label: '登録日（新しい順）' },
+  { key: 'date_asc',  label: '登録日（古い順）' },
+  { key: 'name_asc',  label: '名前順（あ→わ）' },
+];
+
+// --- 画面切替のメイン関数 ---
+function showScreen(name, pushHistory = true) {
+  // 画面履歴に追加（戻る操作用）
+  if (pushHistory && currentScreen !== name) {
+    screenHistory.push(currentScreen);
+    // ブラウザ履歴にpush（popstate経由でない場合のみ）
+    if (!isPopState) {
+      history.pushState({ screen: name }, '');
+    }
+  }
+  currentScreen = name;
+
+  // 全画面を非表示にしてから対象だけ表示
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+
+  // UI要素の参照
+  const backBtn = document.getElementById('btnBack');
+  const tabBar = document.getElementById('tabBar');
+  const searchBar = document.getElementById('searchBar');
+  const fab = document.getElementById('fab');
+  const settingsBtn = document.getElementById('btnSettings');
+  const title = document.getElementById('headerTitle');
+  const sortBtn = document.getElementById('btnSort');
+  const filterBtn = document.getElementById('btnFilter');
+  const detailEditBtn = document.getElementById('btnDetailEdit');
+  const detailDeleteBtn = document.getElementById('btnDetailDelete');
+  const memoSaveBtn = document.getElementById('btnMemoSave');
+  const formSaveBtn = document.getElementById('btnFormSave');
+
+  // デフォルト表示状態（一覧画面向け）
+  backBtn.style.display = 'none';
+  tabBar.style.display = 'flex';
+  searchBar.style.display = 'block';
+  fab.style.display = 'flex';
+  settingsBtn.style.display = 'flex';
+  sortBtn.style.display = 'none';
+  filterBtn.style.display = 'none';
+  detailEditBtn.style.display = 'none';
+  detailDeleteBtn.style.display = 'none';
+  memoSaveBtn.style.display = 'none';
+  formSaveBtn.style.display = 'none';
+
+  // ドロップダウンを閉じる
+  closeAllDropdowns();
+
+  // 画面ごとの個別設定
+  switch (name) {
+    case 'brand':
+      document.getElementById('screenBrand').classList.add('active');
+      title.textContent = 'PEG COSME';
+      sortBtn.style.display = 'flex';
+      filterBtn.style.display = 'flex';
+      renderBrands();
+      break;
+    case 'products':
+      document.getElementById('screenProducts').classList.add('active');
+      backBtn.style.display = 'flex';
+      title.textContent = getBrandName(currentBrandId);
+      sortBtn.style.display = 'flex';
+      filterBtn.style.display = 'flex';
+      renderProducts();
+      break;
+    case 'detail':
+      document.getElementById('screenDetail').classList.add('active');
+      backBtn.style.display = 'flex';
+      tabBar.style.display = 'none';
+      searchBar.style.display = 'none';
+      fab.style.display = 'none';
+      settingsBtn.style.display = 'none';
+      detailEditBtn.style.display = 'inline-block';
+      detailEditBtn.onclick = editProduct;
+      detailDeleteBtn.style.display = 'inline-block';
+      detailDeleteBtn.onclick = confirmDeleteProduct;
+      title.textContent = '商品詳細';
+      renderDetail();
+      break;
+    case 'form':
+      document.getElementById('screenForm').classList.add('active');
+      backBtn.style.display = 'flex';
+      tabBar.style.display = 'none';
+      searchBar.style.display = 'none';
+      fab.style.display = 'none';
+      settingsBtn.style.display = 'none';
+      formSaveBtn.style.display = 'inline-block';
+      formSaveBtn.textContent = editingProductId ? '更新' : '登録';
+      title.textContent = editingProductId ? '商品を編集' : '商品を登録';
+      break;
+    case 'memo':
+      document.getElementById('screenMemo').classList.add('active');
+      title.textContent = 'PEG COSME';
+      sortBtn.style.display = 'flex';
+      renderMemos();
+      break;
+    case 'memoForm':
+      document.getElementById('screenMemoForm').classList.add('active');
+      backBtn.style.display = 'flex';
+      tabBar.style.display = 'none';
+      searchBar.style.display = 'none';
+      fab.style.display = 'none';
+      settingsBtn.style.display = 'none';
+      memoSaveBtn.style.display = 'inline-block';
+      memoSaveBtn.textContent = editingMemoId ? '更新' : '登録';
+      title.textContent = editingMemoId ? 'メモを編集' : 'メモを登録';
+      break;
+    case 'memoDetail':
+      document.getElementById('screenMemoDetail').classList.add('active');
+      backBtn.style.display = 'flex';
+      tabBar.style.display = 'none';
+      searchBar.style.display = 'none';
+      fab.style.display = 'none';
+      settingsBtn.style.display = 'none';
+      detailEditBtn.style.display = 'inline-block';
+      detailEditBtn.onclick = editMemo;
+      detailDeleteBtn.style.display = 'inline-block';
+      detailDeleteBtn.onclick = confirmDeleteMemo;
+      title.textContent = 'メモ詳細';
+      renderMemoDetail();
+      break;
+    case 'settings':
+      document.getElementById('screenSettings').classList.add('active');
+      backBtn.style.display = 'flex';
+      tabBar.style.display = 'none';
+      searchBar.style.display = 'none';
+      fab.style.display = 'none';
+      settingsBtn.style.display = 'none';
+      title.textContent = '設定';
+      checkBackupReminder();
+      break;
+    case 'categoryManage':
+      document.getElementById('screenCategoryManage').classList.add('active');
+      backBtn.style.display = 'flex';
+      tabBar.style.display = 'none';
+      searchBar.style.display = 'none';
+      fab.style.display = 'none';
+      settingsBtn.style.display = 'none';
+      title.textContent = 'カテゴリ管理';
+      renderCategoryList();
+      break;
+    case 'brandManage':
+      document.getElementById('screenBrandManage').classList.add('active');
+      backBtn.style.display = 'flex';
+      tabBar.style.display = 'none';
+      searchBar.style.display = 'none';
+      fab.style.display = 'none';
+      settingsBtn.style.display = 'none';
+      title.textContent = 'ブランド管理';
+      renderBrandManageList();
+      break;
+  }
+
+  // スクロール位置をリセット
+  document.getElementById('mainArea').scrollTop = 0;
+}
+
+// --- 戻る操作 ---
+let formSubmitted = false; // submitProduct/submitMemoで保存済みフラグ
+
+async function goBack() {
+  // メモフォームからの戻りは自動保存（submit済みならスキップ）
+  if (currentScreen === 'memoForm' && !formSubmitted) {
+    await autoSaveMemo();
+  }
+  // 商品フォームからの戻りは自動保存（submit済みならスキップ）
+  if (currentScreen === 'form' && !formSubmitted) {
+    await autoSaveProduct();
+  }
+  formSubmitted = false;
+  if (screenHistory.length > 0) {
+    const prev = screenHistory.pop();
+    showScreen(prev, false);
+  } else {
+    // トップ画面にいるとき → 何もしない
+    if (currentTab === 'card') showScreen('brand', false);
+    else showScreen('memo', false);
+  }
+}
+
+// --- ブラウザの戻るボタン対応（popstateイベント） ---
+let exitPending = false;
+window.addEventListener('popstate', (e) => {
+  // closeLightbox()のhistory.back()で発火した場合はスキップ
+  if (lightboxClosing) {
+    lightboxClosing = false;
+    return;
+  }
+
+  // ライトボックスが開いていたら閉じるだけ（履歴はback時に既に消費済み）
+  if (document.getElementById('lightbox').classList.contains('show')) {
+    document.getElementById('lightbox').classList.remove('show');
+    lightboxImages = [];
+    lightboxIndex = 0;
+    return;
+  }
+
+  // モーダルが開いていたら閉じるだけ
+  if (document.getElementById('modal').classList.contains('show')) {
+    closeModal();
+    history.pushState({ screen: currentScreen }, '');
+    return;
+  }
+
+  // ドロップダウンが開いていたら閉じるだけ
+  if (document.getElementById('dropdownOverlay').classList.contains('show')) {
+    closeAllDropdowns();
+    history.pushState({ screen: currentScreen }, '');
+    return;
+  }
+
+  // トップ画面にいる場合 → 終了確認
+  const isTop = (currentTab === 'card' && currentScreen === 'brand') ||
+                (currentTab === 'memo' && currentScreen === 'memo');
+  if (isTop) {
+    if (exitPending) {
+      return; // 2回目 → ブラウザに任せる（実際に戻る）
+    }
+    // 1回目 → 警告を出して履歴を足し直す
+    exitPending = true;
+    history.pushState({ screen: currentScreen }, '');
+    toast('もう一度戻るとアプリを終了します');
+    setTimeout(() => { exitPending = false; }, 3000);
+    return;
+  }
+
+  // それ以外 → アプリ内で戻る
+  isPopState = true;
+  goBack().then(() => { isPopState = false; });
+});
+
+// --- タブ切替（カード ↔ メモ） ---
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  screenHistory = [];
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').classList.remove('show');
+
+  if (tab === 'card') {
+    showScreen('brand', false);
+  } else {
+    showScreen('memo', false);
+  }
+}
+
+// --- スワイプでタブ切替（トップ画面のみ） ---
+{
+  let swipeStartX = 0;
+  let swipeStartY = 0;
+  let swipeStartTime = 0;
+  const mainArea = document.getElementById('mainArea');
+
+  mainArea.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    swipeStartX = e.touches[0].clientX;
+    swipeStartY = e.touches[0].clientY;
+    swipeStartTime = Date.now();
+  }, { passive: true });
+
+  mainArea.addEventListener('touchend', (e) => {
+    // トップ画面（brand or memo）以外では無効
+    const isTop = (currentTab === 'card' && currentScreen === 'brand') ||
+                  (currentTab === 'memo' && currentScreen === 'memo');
+    if (!isTop) return;
+
+    const dx = e.changedTouches[0].clientX - swipeStartX;
+    const dy = e.changedTouches[0].clientY - swipeStartY;
+    const dt = Date.now() - swipeStartTime;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    // 横方向に十分な距離・速度で、かつ縦方向より大きいスワイプ
+    if (absDx > 70 && absDx > absDy * 1.5 && dt < 400) {
+      if (dx < 0 && currentTab === 'card') {
+        switchTab('memo');  // 左スワイプ → メモへ
+      } else if (dx > 0 && currentTab === 'memo') {
+        switchTab('card');  // 右スワイプ → カードへ
+      }
+    }
+  }, { passive: true });
+}
+
+// --- ブランド名をDOMから取得するヘルパー ---
+function getBrandName(id) {
+  const el = document.querySelector(`.brand-card[data-id="${id}"]`);
+  if (el) return el.querySelector('.brand-name').textContent;
+  // DOMにない場合はデータから取得
+  const brand = allBrands.find(b => b.id === id);
+  return brand ? brand.name : '';
+}
+
+// --- FABボタン押下時の動作（画面に応じて分岐） ---
+function onFabClick() {
+  if (currentTab === 'card') {
+    if (currentScreen === 'brand') {
+      showFabMenu();             // 新規カード or 新規ブランド選択
+    } else if (currentScreen === 'products') {
+      openProductForm(null);     // 商品新規登録フォーム
+    }
+  } else {
+    openMemoForm(null);          // メモ新規登録フォーム
+  }
+}
+
+
+// ══════════════════════════════════════════
+// ソート・フィルター ドロップダウン制御
+// ══════════════════════════════════════════
+
+// --- 全ドロップダウンを閉じる ---
+function closeAllDropdowns() {
+  document.getElementById('dropdownOverlay').classList.remove('show');
+  document.getElementById('sortDropdown').classList.remove('show');
+  document.getElementById('filterDropdown').classList.remove('show');
+}
+
+// --- ソートドロップダウンの開閉 ---
+function toggleSortDropdown() {
+  const dd = document.getElementById('sortDropdown');
+  const isOpen = dd.classList.contains('show');
+  closeAllDropdowns();
+  if (!isOpen) {
+    renderSortDropdown();
+    dd.classList.add('show');
+    document.getElementById('dropdownOverlay').classList.add('show');
+  }
+}
+
+// --- フィルタードロップダウンの開閉 ---
+function toggleFilterDropdown() {
+  const dd = document.getElementById('filterDropdown');
+  const isOpen = dd.classList.contains('show');
+  closeAllDropdowns();
+
+  // フィルター適用中かつドロップダウンが閉じている → フィルター解除のみ
+  if (!isOpen && currentCategoryFilter !== null) {
+    applyCategoryFilter(null);
+    return;
+  }
+
+  if (!isOpen) {
+    renderFilterDropdown();
+    dd.classList.add('show');
+    document.getElementById('dropdownOverlay').classList.add('show');
+  }
+}
+
+// --- ソートドロップダウンの中身を描画（タブに応じて切替） ---
+function renderSortDropdown() {
+  const dd = document.getElementById('sortDropdown');
+  const isMemo = (currentTab === 'memo');
+  const options = isMemo ? MEMO_SORT_OPTIONS : SORT_OPTIONS;
+  const active = isMemo ? currentMemoSort : currentSort;
+
+  dd.innerHTML = '<div class="dropdown-section-title">並び替え</div>' +
+    options.map(opt => {
+      const isActive = active === opt.key;
+      return `<div class="dropdown-item${isActive ? ' active' : ''}" onclick="applySort('${opt.key}')">
+        <span class="dd-check">${isActive ? '✓' : ''}</span>
+        <span>${opt.label}</span>
+      </div>`;
+    }).join('');
+}
+
+// --- フィルタードロップダウンの中身を描画（2列：スキンケア／メイク） ---
+function renderFilterDropdown() {
+  const dd = document.getElementById('filterDropdown');
+  const isAll = currentCategoryFilter === null;
+  let html = '';
+
+  // 「すべて」ボタン（全幅）
+  html += `<div class="dropdown-item${isAll ? ' active' : ''}" onclick="applyCategoryFilter(null)">
+    <span class="dd-check">${isAll ? '✓' : ''}</span>
+    <span>すべて</span>
+  </div>`;
+  html += '<div class="dropdown-divider"></div>';
+
+  // カテゴリをグループ別に分類
+  const cats = allCategories.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const skincare = cats.filter(c => c.group === 'skincare');
+  const makeup = cats.filter(c => c.group === 'makeup');
+
+  // 2列グリッド
+  html += '<div class="filter-columns">';
+
+  // 左列：スキンケア
+  html += '<div class="filter-column">';
+  html += '<div class="filter-column-title">スキンケア</div>';
+  const isSkinAll = currentCategoryFilter === 'group:skincare';
+  html += `<div class="dropdown-item${isSkinAll ? ' active' : ''}" style="font-weight:600;font-size:12px;color:var(--primary);" onclick="applyCategoryFilter('group:skincare')">
+    <span class="dd-check">${isSkinAll ? '✓' : ''}</span>
+    <span>すべて</span>
+  </div>`;
+  skincare.forEach(cat => {
+    const isActive = currentCategoryFilter === cat.name;
+    html += `<div class="dropdown-item${isActive ? ' active' : ''}" onclick="applyCategoryFilter('${esc(cat.name)}')">
+      <span class="dd-check">${isActive ? '✓' : ''}</span>
+      <span>${esc(cat.name)}</span>
+    </div>`;
+  });
+  if (skincare.length === 0) {
+    html += '<div style="padding:8px 10px;font-size:12px;color:var(--text-lighter);">未登録</div>';
+  }
+  html += '</div>';
+
+  // 右列：メイク
+  html += '<div class="filter-column">';
+  html += '<div class="filter-column-title">メイク</div>';
+  const isMakeAll = currentCategoryFilter === 'group:makeup';
+  html += `<div class="dropdown-item${isMakeAll ? ' active' : ''}" style="font-weight:600;font-size:12px;color:var(--primary);" onclick="applyCategoryFilter('group:makeup')">
+    <span class="dd-check">${isMakeAll ? '✓' : ''}</span>
+    <span>すべて</span>
+  </div>`;
+  makeup.forEach(cat => {
+    const isActive = currentCategoryFilter === cat.name;
+    html += `<div class="dropdown-item${isActive ? ' active' : ''}" onclick="applyCategoryFilter('${esc(cat.name)}')">
+      <span class="dd-check">${isActive ? '✓' : ''}</span>
+      <span>${esc(cat.name)}</span>
+    </div>`;
+  });
+  if (makeup.length === 0) {
+    html += '<div style="padding:8px 10px;font-size:12px;color:var(--text-lighter);">未登録</div>';
+  }
+  html += '</div>';
+
+  html += '</div>'; // .filter-columns 閉じ
+
+  dd.innerHTML = html;
+}
+
+// --- ソートを適用 ---
+function applySort(sortKey) {
+  if (currentTab === 'memo') {
+    currentMemoSort = sortKey;
+    closeAllDropdowns();
+    renderMemos();
+  } else {
+    currentSort = sortKey;
+    closeAllDropdowns();
+    if (currentScreen === 'brand') renderBrands();
+    else if (currentScreen === 'products') renderProducts();
+  }
+}
+
+// --- カテゴリフィルターを適用 ---
+function applyCategoryFilter(categoryName) {
+  currentCategoryFilter = categoryName;
+  closeAllDropdowns();
+  // フィルターボタンにインジケーター表示
+  const btn = document.getElementById('btnFilter');
+  if (categoryName) {
+    btn.classList.add('has-filter');
+  } else {
+    btn.classList.remove('has-filter');
+  }
+  // 現在の画面を再描画
+  if (currentScreen === 'brand') renderBrands();
+  else if (currentScreen === 'products') renderProducts();
+}
+
+// --- 商品配列にソートを適用するヘルパー ---
+function sortProducts(products, sortKey) {
+  const [field, order] = sortKey.split('_');
+  const dir = order === 'asc' ? 1 : -1;
+
+  return products.slice().sort((a, b) => {
+    let va, vb;
+    if (field === 'price') {
+      va = a.priceNum || parseInt((a.price || '').replace(/[^0-9]/g, ''), 10) || 0;
+      vb = b.priceNum || parseInt((b.price || '').replace(/[^0-9]/g, ''), 10) || 0;
+      return (va - vb) * dir;
+    }
+    // 文字列フィールド（createdAt, purchaseDate, name）
+    va = a[field] || '';
+    vb = b[field] || '';
+    return va.localeCompare(vb, 'ja') * dir;
+  });
+}
+
+
+/* ══════════════════════════════════════════
+   #BRAND_JS ブランド一覧ロジック
+   ══════════════════════════════════════════ */
+
+// --- データ格納用の配列（全件読み込み後に使用） ---
+let allBrands = [];
+let allProducts = [];
+let allMemos = [];
+
+// --- 全データをDBから読み込み ---
+async function loadAllData() {
+  allBrands = await dbGetAll('brands');
+  allProducts = await dbGetAll('products');
+  allMemos = await dbGetAll('memos');
+  allCategories = await dbGetAll('categories');
+  allCategories.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+  allBrands.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  allMemos.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+}
+
+// --- ブランド一覧を描画 ---
+async function renderBrands() {
+  await loadAllData();
+  const query = document.getElementById('searchInput').value.trim().toLowerCase();
+  const rawQuery = document.getElementById('searchInput').value.trim();
+  const list = document.getElementById('brandList');
+  const empty = document.getElementById('brandEmpty');
+
+  // === カテゴリフィルター中：ブランドをまたいで商品カードを直接表示 ===
+  if (currentCategoryFilter) {
+    let products;
+    if (currentCategoryFilter === 'group:skincare') {
+      products = allProducts.filter(p => p.categorySkincare);
+    } else if (currentCategoryFilter === 'group:makeup') {
+      products = allProducts.filter(p => p.categoryMakeup);
+    } else {
+      products = allProducts.filter(p =>
+        p.categoryMakeup === currentCategoryFilter || p.categorySkincare === currentCategoryFilter
+      );
+    }
+
+    // 検索フィルタ
+    if (query) {
+      products = products.filter(p => {
+        const text = [p.name, p.categoryMakeup, p.categorySkincare, p.ingredients, p.memo, p.volume, p.price].join(' ').toLowerCase();
+        return text.includes(query);
+      });
+    }
+
+    // ソート
+    products = sortProducts(products, currentSort);
+
+    // 0件
+    if (products.length === 0) {
+      list.innerHTML = '';
+      empty.style.display = 'flex';
+      empty.querySelector('p').textContent = query
+        ? '一致する商品が見つかりません'
+        : `「${currentCategoryFilter === 'group:skincare' ? 'スキンケア' : currentCategoryFilter === 'group:makeup' ? 'メイク' : currentCategoryFilter}」の商品はありません`;
+      return;
+    }
+
+    empty.style.display = 'none';
+    const thumbIcon = `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+
+    // ブランド名を引けるMapを用意
+    const brandMap = new Map(allBrands.map(b => [b.id, b.name]));
+
+    const cardHtmlList = await Promise.all(products.map(async (p) => {
+      let thumbHtml;
+      if (p.images?.[0]) {
+        const url = URL.createObjectURL(p.images[0]);
+        thumbHtml = `<img src="${url}" alt="" onload="URL.revokeObjectURL(this.src)">`;
+      } else {
+        thumbHtml = thumbIcon;
+      }
+      const priceText = p.price ? `¥${p.price}` : '';
+      const brandName = brandMap.get(p.brandId) || '';
+      const catParts = [p.categoryMakeup, p.categorySkincare].filter(Boolean);
+      const catText = catParts.join(' / ');
+      return `<div class="product-card" data-id="${p.id}"
+        onclick="openProduct('${p.id}')"
+        oncontextmenu="return false"
+        ontouchstart="startLongPress(event, '${p.id}')"
+        ontouchend="cancelLongPress()"
+        ontouchmove="cancelLongPress()">
+        <div class="product-thumb">${thumbHtml}</div>
+        <div class="product-info">
+          ${brandName ? `<div class="product-brand-label">${escHL(brandName, rawQuery)}</div>` : ''}
+          <div class="product-name">${escHL(p.name, rawQuery)}</div>
+          ${catText ? `<div class="product-category">${escHL(catText, rawQuery)}</div>` : ''}
+          ${priceText ? `<div class="product-price">${priceText}</div>` : ''}
+        </div>
+      </div>`;
+    }));
+
+    list.innerHTML = cardHtmlList.join('');
+    return;
+  }
+
+  // === 通常表示（フィルターなし）：ブランドフォルダ一覧 ===
+  let brands = allBrands;
+
+  // 未分類商品（brandIdがnullまたは空）を取得
+  let unassigned = allProducts.filter(p => !p.brandId);
+
+  // --- 検索フィルタ ---
+  let filteredProducts = allProducts;
+  if (query) {
+    const matchBrandIds = new Set();
+    filteredProducts.forEach(p => {
+      const text = [p.name, p.categoryMakeup, p.categorySkincare, p.ingredients, p.memo, p.volume, p.price].join(' ').toLowerCase();
+      if (text.includes(query)) matchBrandIds.add(p.brandId);
+    });
+    brands = brands.filter(b =>
+      b.name.toLowerCase().includes(query) || matchBrandIds.has(b.id)
+    );
+    unassigned = unassigned.filter(p => {
+      const text = [p.name, p.categoryMakeup, p.categorySkincare, p.ingredients, p.memo, p.volume, p.price].join(' ').toLowerCase();
+      return text.includes(query);
+    });
+  }
+
+  // --- ブランドのソート ---
+  if (currentSort === 'name_asc') {
+    brands.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  } else {
+    const [field, order] = currentSort.split('_');
+    const dir = order === 'asc' ? 1 : -1;
+
+    const brandValue = (brandId) => {
+      const prods = filteredProducts.filter(p => p.brandId === brandId);
+      if (prods.length === 0) return field === 'price' ? 0 : '';
+      if (field === 'price') {
+        return Math.max(...prods.map(p => Number(p.price) || 0));
+      }
+      const vals = prods.map(p => p[field] || '').filter(Boolean);
+      if (vals.length === 0) return '';
+      vals.sort();
+      return vals[vals.length - 1];
+    };
+
+    brands.sort((a, b) => {
+      const va = brandValue(a.id);
+      const vb = brandValue(b.id);
+      if (field === 'price') return (va - vb) * dir;
+      return String(va).localeCompare(String(vb), 'ja') * dir;
+    });
+  }
+
+  // --- 未分類商品のソート ---
+  unassigned = sortProducts(unassigned, currentSort);
+
+  // ブランドも未分類も0件
+  if (brands.length === 0 && unassigned.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'flex';
+    if (query) {
+      empty.querySelector('p').textContent = '一致するブランドが見つかりません';
+    } else {
+      empty.querySelector('p').innerHTML = 'まだ何も登録されていません<br>＋ボタンからカードを追加してください';
+    }
+    return;
+  }
+
+  empty.style.display = 'none';
+
+  const thumbIcon = `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+
+  // ブランドカード一覧を生成（長押し対応）
+  const brandHTML = brands.map(b => {
+    const count = allProducts.filter(p => p.brandId === b.id).length;
+    return `<div class="brand-card" data-id="${b.id}"
+      onclick="openBrand('${b.id}')"
+      oncontextmenu="return false"
+      ontouchstart="startBrandLongPress(event, '${b.id}')"
+      ontouchend="cancelBrandLongPress()"
+      ontouchmove="cancelBrandLongPress()">
+      <div class="brand-info">
+        <div class="brand-name">${escHL(b.name, rawQuery)}</div>
+        <div class="brand-count">${count}件の商品</div>
+      </div>
+      <svg class="brand-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+    </div>`;
+  }).join('');
+
+  // 未分類商品カードを生成（BlobをオブジェクトURLに変換）
+  const unassignedCardList = await Promise.all(unassigned.map(async (p) => {
+    let thumbHtml;
+    if (p.images?.[0]) {
+      const url = URL.createObjectURL(p.images[0]);
+      thumbHtml = `<img src="${url}" alt="" onload="URL.revokeObjectURL(this.src)">`;
+    } else {
+      thumbHtml = thumbIcon;
+    }
+    const priceText = p.price ? `¥${p.price}` : '';
+    const catParts = [p.categoryMakeup, p.categorySkincare].filter(Boolean);
+    const catText = catParts.join(' / ');
+    return `<div class="product-card unassigned-card" data-id="${p.id}"
+      onclick="openProduct('${p.id}')"
+      oncontextmenu="return false"
+      ontouchstart="startLongPress(event, '${p.id}')"
+      ontouchend="cancelLongPress()"
+      ontouchmove="cancelLongPress()">
+      <div class="product-thumb">${thumbHtml}</div>
+      <div class="product-info">
+        <div class="product-name">${escHL(p.name, rawQuery)}</div>
+        ${catText ? `<div class="product-category">${escHL(catText, rawQuery)}</div>` : ''}
+        ${priceText ? `<div class="product-price">${priceText}</div>` : ''}
+      </div>
+    </div>`;
+  }));
+
+  list.innerHTML = brandHTML + unassignedCardList.join('');
+}
+
+// --- ブランドをタップ → 商品一覧画面へ ---
+function openBrand(id) {
+  currentBrandId = id;
+  showScreen('products');
+}
+
+// --- ブランド長押し検出用タイマー ---
+let brandLongPressTimer = null;
+
+// --- ブランド長押し開始 ---
+function startBrandLongPress(e, brandId) {
+  brandLongPressTimer = setTimeout(() => {
+    brandLongPressTimer = null;
+    showBrandContextMenu(brandId);
+  }, 500);
+}
+
+// --- ブランド長押しキャンセル ---
+function cancelBrandLongPress() {
+  if (brandLongPressTimer) {
+    clearTimeout(brandLongPressTimer);
+    brandLongPressTimer = null;
+  }
+}
+
+// --- ブランド長押しメニューを表示 ---
+function showBrandContextMenu(brandId) {
+  const brand = allBrands.find(b => b.id === brandId);
+  if (!brand) return;
+  const count = allProducts.filter(p => p.brandId === brandId).length;
+  const countText = count > 0 ? `（商品${count}件も削除されます）` : '';
+  showModal({
+    title: brand.name,
+    content: `<p style="font-size:14px; color:var(--text-light); margin:0;">このブランドを削除しますか？${countText}</p>`,
+    actions: [
+      { text: '削除', cls: 'modal-delete', action: () => deleteBrand(brandId) },
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal }
+    ]
+  });
+}
+
+// --- ブランドと中の商品をすべて削除 ---
+async function deleteBrand(brandId) {
+  const products = allProducts.filter(p => p.brandId === brandId);
+  for (const p of products) {
+    await dbDelete('products', p.id);
+  }
+  await dbDelete('brands', brandId);
+  await markDataUpdated();
+  closeModal();
+  toast('ブランドを削除しました');
+  renderBrands();
+}
+
+// --- FABメニューを表示（新規カード or 新規ブランド） ---
+function showFabMenu() {
+  showModal({
+    title: '追加する項目を選択',
+    content: '',
+    actions: [
+      { text: '＋ 新規カード', cls: 'modal-ok', action: () => { closeModal(); openProductForm(null); } },
+      { text: '＋ 新規ブランド', cls: 'modal-cancel', action: () => { closeModal(); showAddBrandModal(); } }
+    ]
+  });
+}
+
+// --- ブランド追加モーダルを表示 ---
+function showAddBrandModal() {
+  showModal({
+    title: 'ブランドを追加',
+    content: '<input class="modal-input" id="modalBrandInput" placeholder="ブランド名を入力" autofocus>',
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '追加', cls: 'modal-ok', action: addBrand }
+    ]
+  });
+  setTimeout(() => {
+    const inp = document.getElementById('modalBrandInput');
+    if (inp) inp.focus();
+  }, 100);
+}
+
+// --- ブランドをDBに追加 ---
+async function addBrand() {
+  const inp = document.getElementById('modalBrandInput');
+  const name = inp ? inp.value.trim() : '';
+  if (!name) { toast('ブランド名を入力してください'); return; }
+  if (allBrands.some(b => b.name === name)) {
+    toast('同じ名前のブランドが既にあります');
+    return;
+  }
+  await dbPut('brands', { id: genId(), name, createdAt: new Date().toISOString() });
+  await markDataUpdated();
+  closeModal();
+  toast('ブランドを追加しました');
+  renderBrands();
+}
+
+// --- 移動モーダルからブランドを新規作成して即移動 ---
+function addBrandFromMoveModal(productId) {
+  closeModal();
+  showModal({
+    title: 'ブランドを追加',
+    content: '<input class="modal-input" id="modalBrandInput" placeholder="ブランド名を入力" autocomplete="off">',
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      {
+        text: '追加して移動', cls: 'modal-ok', action: async () => {
+          const inp = document.getElementById('modalBrandInput');
+          const name = inp ? inp.value.trim() : '';
+          if (!name) { toast('ブランド名を入力してください'); return; }
+          if (allBrands.some(b => b.name === name)) {
+            toast('同じ名前のブランドが既にあります');
+            return;
+          }
+          const newBrand = { id: genId(), name, createdAt: new Date().toISOString() };
+          await dbPut('brands', newBrand);
+          await markDataUpdated();
+          await loadAllData();
+          closeModal();
+          await moveToBrand(productId, newBrand.id);
+        }
+      }
+    ]
+  });
+  setTimeout(() => {
+    const inp = document.getElementById('modalBrandInput');
+    if (inp) inp.focus();
+  }, 100);
+}
+
+
+/* ══════════════════════════════════════════
+   #PRODUCT_JS 商品一覧ロジック
+   ══════════════════════════════════════════ */
+
+// --- 選択中ブランドの商品一覧を描画 ---
+async function renderProducts() {
+  await loadAllData();
+  const query = document.getElementById('searchInput').value.trim().toLowerCase();
+  const rawQuery = document.getElementById('searchInput').value.trim();
+  const list = document.getElementById('productList');
+  const empty = document.getElementById('productEmpty');
+
+  let products = allProducts.filter(p => p.brandId === currentBrandId);
+
+  if (currentCategoryFilter) {
+    if (currentCategoryFilter === 'group:skincare') {
+      products = products.filter(p => p.categorySkincare);
+    } else if (currentCategoryFilter === 'group:makeup') {
+      products = products.filter(p => p.categoryMakeup);
+    } else {
+      products = products.filter(p =>
+        p.categoryMakeup === currentCategoryFilter || p.categorySkincare === currentCategoryFilter
+      );
+    }
+  }
+
+  if (query) {
+    products = products.filter(p => {
+      const text = [p.name, p.categoryMakeup, p.categorySkincare, p.ingredients, p.memo, p.volume, p.price].join(' ').toLowerCase();
+      return text.includes(query);
+    });
+  }
+
+  products = sortProducts(products, currentSort);
+
+  if (products.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'flex';
+    if (currentCategoryFilter || query) {
+      empty.querySelector('p').textContent = '条件に一致する商品がありません';
+    } else {
+      empty.querySelector('p').innerHTML = '商品が登録されていません<br>＋ボタンから追加してください';
+    }
+    return;
+  }
+
+  empty.style.display = 'none';
+  const thumbIcon = `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+
+  // サムネイル用のオブジェクトURLを生成してカードHTMLを組み立て
+  const cardHtmlList = await Promise.all(products.map(async (p) => {
+    let thumbHtml;
+    if (p.images?.[0]) {
+      const url = URL.createObjectURL(p.images[0]);
+      thumbHtml = `<img src="${url}" alt="" onload="URL.revokeObjectURL(this.src)">`;
+    } else {
+      thumbHtml = thumbIcon;
+    }
+    const priceText = p.price ? `¥${p.price}` : '';
+    const catParts = [p.categoryMakeup, p.categorySkincare].filter(Boolean);
+    const catText = catParts.join(' / ');
+    return `<div class="product-card" data-id="${p.id}"
+      onclick="openProduct('${p.id}')"
+      oncontextmenu="return false"
+      ontouchstart="startLongPress(event, '${p.id}')"
+      ontouchend="cancelLongPress()"
+      ontouchmove="cancelLongPress()">
+      <div class="product-thumb">${thumbHtml}</div>
+      <div class="product-info">
+        <div class="product-name">${escHL(p.name, rawQuery)}</div>
+        ${catText ? `<div class="product-category">${escHL(catText, rawQuery)}</div>` : ''}
+        ${priceText ? `<div class="product-price">${priceText}</div>` : ''}
+      </div>
+    </div>`;
+  }));
+
+  list.innerHTML = cardHtmlList.join('');
+}
+
+// --- 商品をタップ → 詳細画面へ ---
+function openProduct(id) {
+  let productCards;
+  if (currentScreen === 'brand') {
+    productCards = document.querySelectorAll('#brandList .product-card');
+  } else if (currentScreen === 'products') {
+    productCards = document.querySelectorAll('#productList .product-card');
+  } else {
+    productCards = [];
+  }
+
+  detailNavList = Array.from(productCards).map(el => el.dataset.id);
+  detailNavIndex = detailNavList.indexOf(id);
+
+  if (detailNavIndex === -1) {
+    detailNavList = [id];
+    detailNavIndex = 0;
+  }
+
+  currentProductId = id;
+  showScreen('detail');
+}
+
+// --- 長押し検出用タイマー ---
+let longPressTimer = null;
+
+// --- 長押し開始 ---
+function startLongPress(e, productId) {
+  longPressTimer = setTimeout(() => {
+    longPressTimer = null;
+    showProductContextMenu(productId);
+  }, 500);
+}
+
+// --- 長押しキャンセル ---
+function cancelLongPress() {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
+}
+
+// --- 長押しメニューを表示 ---
+function showProductContextMenu(productId) {
+  showModal({
+    title: 'カードの操作',
+    content: '',
+    actions: [
+      { text: 'ブランドへ移動', cls: 'modal-ok', action: () => { closeModal(); showMoveToBrandModal(productId); } },
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal }
+    ]
+  });
+}
+
+// --- ブランド移動先選択モーダルを表示 ---
+async function showMoveToBrandModal(productId) {
+  await loadAllData();
+
+  const product = allProducts.find(p => p.id === productId);
+  const otherBrands = allBrands.filter(b => b.id !== product?.brandId);
+
+  const options = otherBrands.map(b =>
+    `<div class="modal-brand-option" onclick="moveToBrand('${productId}', '${b.id}')">${esc(b.name)}</div>`
+  ).join('');
+
+  const unassignOption = product?.brandId
+    ? `<div class="modal-brand-option modal-brand-unassign" onclick="moveToBrand('${productId}', null)">未分類に戻す</div>`
+    : '';
+
+  const newBrandOption = `<div class="modal-brand-option modal-brand-new" onclick="addBrandFromMoveModal('${productId}')">＋ 新規ブランドを作成</div>`;
+
+  showModal({
+    title: '移動先のブランドを選択',
+    content: `<div class="modal-brand-list">${newBrandOption}${options}${unassignOption}</div>`,
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal }
+    ]
+  });
+}
+
+// --- 商品のブランドを変更してDBに保存 ---
+async function moveToBrand(productId, brandId) {
+  const product = await dbGet('products', productId);
+  if (!product) return;
+  product.brandId = brandId;
+  product.updatedAt = new Date().toISOString();
+  await dbPut('products', product);
+  await markDataUpdated();
+  closeModal();
+  const brandName = brandId ? allBrands.find(b => b.id === brandId)?.name : '未分類';
+  toast(`「${brandName}」に移動しました`);
+  renderBrands();
+}
+
+
+/* ══════════════════════════════════════════
+   #DETAIL_JS 商品詳細ロジック
+   ══════════════════════════════════════════ */
+
+// --- スワイプナビゲーション用の状態 ---
+let detailNavList = [];
+let detailNavIndex = -1;
+
+// --- スワイプ検出用の変数 ---
+let detailTouchStartX = 0;
+let detailTouchStartY = 0;
+let detailTouchStartTime = 0;
+
+// --- 詳細画面のタッチ開始 ---
+function onDetailTouchStart(e) {
+  detailTouchStartX = e.touches[0].clientX;
+  detailTouchStartY = e.touches[0].clientY;
+  detailTouchStartTime = Date.now();
+}
+
+// --- 詳細画面のタッチ終了（スワイプ判定） ---
+function onDetailTouchEnd(e) {
+  if (detailNavList.length <= 1) return;
+
+  const dx = e.changedTouches[0].clientX - detailTouchStartX;
+  const dy = e.changedTouches[0].clientY - detailTouchStartY;
+  const dt = Date.now() - detailTouchStartTime;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+
+  if (absDx > 80 && absDx > absDy * 2 && dt < 400) {
+    if (dx < 0) {
+      navigateDetail(1);
+    } else {
+      navigateDetail(-1);
+    }
+  }
+}
+
+// --- 前後のカードに移動 ---
+function navigateDetail(direction) {
+  const newIndex = detailNavIndex + direction;
+  if (newIndex < 0 || newIndex >= detailNavList.length) return;
+
+  detailNavIndex = newIndex;
+  currentProductId = detailNavList[newIndex];
+
+  const screen = document.getElementById('screenDetail');
+  const animClass = direction > 0 ? 'detail-slide-left' : 'detail-slide-right';
+  screen.classList.add(animClass);
+  screen.addEventListener('animationend', () => {
+    screen.classList.remove(animClass);
+  }, { once: true });
+
+  renderDetail();
+  document.getElementById('mainArea').scrollTop = 0;
+}
+
+// --- ナビゲーションインジケーターを更新 ---
+function updateNavIndicator() {
+  const indicator = document.getElementById('detailNavIndicator');
+  const prevArrow = document.getElementById('detailNavPrev');
+  const nextArrow = document.getElementById('detailNavNext');
+  const navText = document.getElementById('detailNavText');
+
+  if (detailNavList.length <= 1) {
+    indicator.classList.remove('show');
+    return;
+  }
+
+  indicator.classList.add('show');
+  navText.textContent = `${detailNavIndex + 1} / ${detailNavList.length}`;
+
+  prevArrow.classList.toggle('disabled', detailNavIndex === 0);
+  nextArrow.classList.toggle('disabled', detailNavIndex === detailNavList.length - 1);
+}
+
+// --- BlobをオブジェクトURLに変換（表示用） ---
+function blobToUrl(blob) {
+  if (!blob) return null;
+  if (typeof blob === 'string') return blob; // 万一base64文字列が残っていた場合の保険
+  return URL.createObjectURL(blob);
+}
+
+// --- 商品詳細画面を描画 ---
+async function renderDetail() {
+  const p = await dbGet('products', currentProductId);
+  if (!p) return;
+  const rawQuery = document.getElementById('searchInput').value.trim();
+
+  updateNavIndicator();
+
+  // 商品画像の表示
+  const imgArea = document.getElementById('detailImage');
+  if (p.images?.length > 0) {
+    const url = blobToUrl(p.images[0]);
+    const dotHtml = p.images.length > 1
+      ? `<div style="display:flex;justify-content:center;gap:6px;padding:6px 0 0;">
+          ${p.images.map((_, i) => `<span style="width:6px;height:6px;border-radius:50%;background:${i === 0 ? 'var(--primary)' : 'var(--border)'};"></span>`).join('')}
+        </div>`
+      : '';
+    imgArea.innerHTML = `<img src="${url}" alt="" onclick="openLightbox()" style="cursor:pointer;" onload="URL.revokeObjectURL(this.src)">${dotHtml}`;
+  } else {
+    imgArea.innerHTML = `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+  }
+
+  const brand = allBrands.find(b => b.id === p.brandId);
+  const priceText = p.price ? `¥${p.price}` : '';
+
+  let html = `<div class="detail-title">${escHL(p.name, rawQuery)}</div>`;
+  html += `<div class="detail-brand">${brand ? escHL(brand.name, rawQuery) : ''}</div>`;
+
+  html += `<div class="detail-meta">`;
+  if (p.categoryMakeup) html += `<span class="detail-tag">${escHL(p.categoryMakeup, rawQuery)}</span>`;
+  if (p.categorySkincare) html += `<span class="detail-tag">${escHL(p.categorySkincare, rawQuery)}</span>`;
+  if (p.volume) html += `<span class="detail-tag">${escHL(p.volume, rawQuery)}</span>`;
+  if (priceText) html += `<span class="detail-tag">${priceText}</span>`;
+  if (p.purchaseDate) html += `<span class="detail-tag">${esc(p.purchaseDate)}</span>`;
+  html += `</div>`;
+
+  html += `<div style="margin-bottom:16px;">
+    <button class="detail-copy-btn" onclick="copyAllInfo()">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+      全情報をコピー
+    </button>
+  </div>`;
+
+  if (p.ingredients) {
+    html += `<div class="detail-section">
+      <div class="detail-section-label">全成分</div>
+      <div class="detail-section-content">${escHL(p.ingredients, rawQuery)}</div>
+    </div>`;
+  }
+
+  if (p.memo) {
+    html += `<div class="detail-section">
+      <div class="detail-section-label">メモ</div>
+      <div class="detail-section-content memo-content">${escHL(p.memo, rawQuery)}</div>
+    </div>`;
+  }
+
+  document.getElementById('detailBody').innerHTML = html;
+}
+
+// --- 全情報をテキストにまとめてクリップボードにコピー ---
+async function copyAllInfo() {
+  const p = await dbGet('products', currentProductId);
+  if (!p) return;
+  const brand = allBrands.find(b => b.id === p.brandId);
+  const lines = [];
+  if (brand) lines.push(`ブランド：${brand.name}`);
+  lines.push(`商品名：${p.name}`);
+  if (p.categoryMakeup) lines.push(`カテゴリ（メイク）：${p.categoryMakeup}`);
+  if (p.categorySkincare) lines.push(`カテゴリ（スキンケア）：${p.categorySkincare}`);
+  if (p.volume) lines.push(`容量：${p.volume}`);
+  if (p.price) lines.push(`価格：¥${p.price}`);
+  if (p.purchaseDate) lines.push(`購入時期：${p.purchaseDate}`);
+  if (p.ingredients) lines.push(`\n全成分：\n${p.ingredients}`);
+  if (p.memo) lines.push(`\nメモ：\n${p.memo}`);
+  doCopy(lines.join('\n'));
+}
+
+// --- 個別フィールドのコピー ---
+async function copyField(field) {
+  const p = await dbGet('products', currentProductId);
+  if (!p || !p[field]) return;
+  doCopy(p[field]);
+}
+
+// --- クリップボードコピー実行（フォールバック付き） ---
+function doCopy(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    toast('コピーしました');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('コピーしました');
+  });
+}
+
+// --- 編集ボタン → フォーム画面へ ---
+function editProduct() {
+  openProductForm(currentProductId);
+}
+
+// --- 削除確認モーダルを表示 ---
+function confirmDeleteProduct() {
+  showModal({
+    title: '商品を削除',
+    content: 'この商品を削除しますか？この操作は取り消せません。',
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '削除', cls: 'modal-danger', action: deleteProduct }
+    ]
+  });
+}
+
+// --- 商品をDBから削除 ---
+async function deleteProduct() {
+  await dbDelete('products', currentProductId);
+  await markDataUpdated();
+  closeModal();
+  toast('商品を削除しました');
+  goBack();
+}
+
+
+/* ══════════════════════════════════════════
+   #FORM_JS 商品フォームロジック
+   ══════════════════════════════════════════ */
+
+// --- カテゴリ選択肢を更新（グループ別に2つのドロップダウンへ） ---
+function refreshCategorySelects(selectedMakeup, selectedSkincare) {
+  const makeupSel = document.getElementById('formCategoryMakeup');
+  const skincareSel = document.getElementById('formCategorySkincare');
+
+  makeupSel.innerHTML = '<option value="">メイク（未選択）</option>';
+  skincareSel.innerHTML = '<option value="">スキンケア（未選択）</option>';
+
+  allCategories.forEach(c => {
+    if (c.group === 'makeup') {
+      makeupSel.innerHTML += `<option value="${esc(c.name)}">${esc(c.name)}</option>`;
+    } else if (c.group === 'skincare') {
+      skincareSel.innerHTML += `<option value="${esc(c.name)}">${esc(c.name)}</option>`;
+    }
+  });
+
+  if (selectedMakeup) makeupSel.value = selectedMakeup;
+  if (selectedSkincare) skincareSel.value = selectedSkincare;
+
+  updateCategoryPlaceholder(makeupSel);
+  updateCategoryPlaceholder(skincareSel);
+}
+
+// --- カテゴリselect のプレースホルダー表示切替 ---
+function updateCategoryPlaceholder(sel) {
+  sel.classList.toggle('placeholder', sel.value === '');
+}
+
+// --- カテゴリselect の変更時にプレースホルダーを更新 ---
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'formCategoryMakeup' || e.target.id === 'formCategorySkincare') {
+    updateCategoryPlaceholder(e.target);
+  }
+});
+
+// --- カテゴリ追加モーダルを開く（フォーム画面用） ---
+function openAddCategoryModal(group) {
+  const groupLabel = group === 'skincare' ? 'スキンケア' : 'メイク';
+  showModal({
+    title: `${groupLabel}カテゴリを追加`,
+    content: '<input class="modal-input" id="newCategoryInput" placeholder="例：リップ" autocomplete="off">',
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '追加', cls: 'modal-ok', action: () => addCategoryFromForm(group) }
+    ]
+  });
+  setTimeout(() => {
+    const input = document.getElementById('newCategoryInput');
+    if (input) input.focus();
+  }, 100);
+}
+
+// --- カテゴリをDBに追加して選択肢を更新（フォーム画面用） ---
+async function addCategoryFromForm(group) {
+  const input = document.getElementById('newCategoryInput');
+  const name = input ? input.value.trim() : '';
+  if (!name) { toast('カテゴリ名を入力してください'); return; }
+
+  if (allCategories.some(c => c.name === name)) {
+    toast('同じ名前のカテゴリが既にあります');
+    return;
+  }
+
+  const newCat = { id: genId(), name, group, order: allCategories.length };
+  await dbPut('categories', newCat);
+  await markDataUpdated();
+  await loadCategories();
+
+  const curMakeup = group === 'makeup' ? name : document.getElementById('formCategoryMakeup').value;
+  const curSkincare = group === 'skincare' ? name : document.getElementById('formCategorySkincare').value;
+  refreshCategorySelects(curMakeup, curSkincare);
+  closeModal();
+  toast(`「${name}」を追加しました`);
+}
+
+// --- ブランド選択肢を生成（新規ブランド作成・未分類・登録済みの順） ---
+function refreshBrandSelect(selectedValue) {
+  const sel = document.getElementById('formBrand');
+  sel.innerHTML = '';
+  sel.innerHTML += '<option value="__new__">＋ 新規ブランドを作成</option>';
+  sel.innerHTML += '<option value="">ブランドなし（未分類）</option>';
+  allBrands.forEach(b => {
+    sel.innerHTML += `<option value="${b.id}">${esc(b.name)}</option>`;
+  });
+  if (selectedValue !== undefined) sel.value = selectedValue;
+}
+
+// --- ブランドセレクトで「新規ブランドを作成」を選んだ時 ---
+function onFormBrandChange(e) {
+  if (e.target.value !== '__new__') return;
+  e.target.value = '';
+  showModal({
+    title: 'ブランドを追加',
+    content: '<input class="modal-input" id="modalBrandInput" placeholder="ブランド名を入力" autocomplete="off">',
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '追加', cls: 'modal-ok', action: addBrandFromForm }
+    ]
+  });
+  setTimeout(() => {
+    const inp = document.getElementById('modalBrandInput');
+    if (inp) inp.focus();
+  }, 100);
+}
+
+// --- フォーム内からブランドを追加してセレクトを更新 ---
+async function addBrandFromForm() {
+  const inp = document.getElementById('modalBrandInput');
+  const name = inp ? inp.value.trim() : '';
+  if (!name) { toast('ブランド名を入力してください'); return; }
+  if (allBrands.some(b => b.name === name)) {
+    toast('同じ名前のブランドが既にあります');
+    return;
+  }
+  const newBrand = { id: genId(), name, createdAt: new Date().toISOString() };
+  await dbPut('brands', newBrand);
+  await markDataUpdated();
+  await loadAllData();
+  closeModal();
+  refreshBrandSelect(newBrand.id);
+  toast(`「${name}」を追加しました`);
+}
+
+// --- 商品フォームを開く（新規 or 編集） ---
+async function openProductForm(productId) {
+  editingProductId = productId;
+  formImages = [];
+
+  await loadAllData();
+  await loadCategories();
+  refreshCategorySelects('', '');
+
+  document.getElementById('formName').value = '';
+  document.getElementById('formVolume').value = '';
+  document.getElementById('formPrice').value = '';
+  document.getElementById('formPurchaseDate').value = '';
+  document.getElementById('formIngredients').value = '';
+  document.getElementById('formMemo').value = '';
+
+  if (productId) {
+    const p = await dbGet('products', productId);
+    if (p) {
+      refreshBrandSelect(p.brandId || '');
+      document.getElementById('formName').value = p.name || '';
+      refreshCategorySelects(p.categoryMakeup || '', p.categorySkincare || '');
+      document.getElementById('formVolume').value = p.volume || '';
+      document.getElementById('formPrice').value = p.price || '';
+      document.getElementById('formPurchaseDate').value = p.purchaseDate || '';
+      document.getElementById('formIngredients').value = p.ingredients || '';
+      document.getElementById('formMemo').value = p.memo || '';
+      if (p.images?.length > 0) {
+        formImages = [...p.images];
+      }
+    }
+  } else {
+    refreshBrandSelect(currentBrandId || '');
+  }
+
+  renderFormImageGrid();
+  showScreen('form');
+}
+
+// --- 画像サムネイルグリッドを描画 ---
+function renderFormImageGrid() {
+  const grid = document.getElementById('formImageGrid');
+  const xSvg = `<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+  let html = '';
+
+  formImages.forEach((blob, i) => {
+    const url = URL.createObjectURL(blob);
+    html += `<div class="form-image-slot has-image">
+      <img src="${url}" alt="" onload="URL.revokeObjectURL(this.src)">
+      <button class="form-image-remove" onclick="removeFormImage(event, ${i})">${xSvg}</button>
+    </div>`;
+  });
+
+  if (formImages.length < 3) {
+    html += `<div class="form-image-add" onclick="pickImage()">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>追加</span>
+    </div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+// --- 画像選択ダイアログを開く ---
+function pickImage() {
+  if (formImages.length >= 3) return;
+  document.getElementById('imageInput').click();
+}
+
+// --- 画像ファイル選択後の処理（リサイズ・圧縮してBlobに変換） ---
+function onImageSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  e.target.value = '';
+
+  const img = new Image();
+  const objectUrl = URL.createObjectURL(file);
+  img.onload = () => {
+    URL.revokeObjectURL(objectUrl);
+    const MAX = 800;
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+
+    // 長辺が800px以下ならリサイズせずそのままBlobに変換
+    if (w <= MAX && h <= MAX) {
+      formImages.push(file);
+      renderFormImageGrid();
+      return;
+    }
+
+    // 長辺が800px超えならcanvasでリサイズしてJPEG圧縮
+    const scale = MAX / Math.max(w, h);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(w * scale);
+    canvas.height = Math.round(h * scale);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      formImages.push(blob);
+      renderFormImageGrid();
+    }, 'image/jpeg', 0.85);
+  };
+  img.src = objectUrl;
+}
+
+// --- 画像を個別に削除 ---
+function removeFormImage(e, index) {
+  e.stopPropagation();
+  formImages.splice(index, 1);
+  renderFormImageGrid();
+}
+
+// --- 商品フォームの自動保存（戻るボタン時） ---
+async function autoSaveProduct() {
+  const name = document.getElementById('formName').value.trim();
+  if (!name) return; // 商品名が空なら保存しない
+
+  const brandId = document.getElementById('formBrand').value || null;
+  const priceRaw = document.getElementById('formPrice').value.trim();
+  const priceNum = parseInt(priceRaw.replace(/[^0-9]/g, ''), 10) || 0;
+
+  const data = {
+    id: editingProductId || genId(),
+    brandId,
+    name,
+    categoryMakeup: document.getElementById('formCategoryMakeup').value,
+    categorySkincare: document.getElementById('formCategorySkincare').value,
+    volume: document.getElementById('formVolume').value.trim(),
+    price: priceRaw,
+    priceNum,
+    purchaseDate: document.getElementById('formPurchaseDate').value,
+    ingredients: document.getElementById('formIngredients').value.trim(),
+    memo: document.getElementById('formMemo').value.trim(),
+    image: formImages[0] || null,
+    images: formImages.length > 0 ? [...formImages] : [],
+    createdAt: editingProductId
+      ? (await dbGet('products', editingProductId))?.createdAt || new Date().toISOString()
+      : new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  await dbPut('products', data);
+  await markDataUpdated();
+  toast(editingProductId ? '商品を更新しました' : '商品を登録しました');
+  editingProductId = null;
+}
+
+// --- 商品をDBに保存（新規登録 or 更新） ---
+async function submitProduct() {
+  const brandId = document.getElementById('formBrand').value || null;
+  const name = document.getElementById('formName').value.trim();
+
+  if (!name) { toast('商品名を入力してください'); return; }
+
+  const priceRaw = document.getElementById('formPrice').value.trim();
+  const priceNum = parseInt(priceRaw.replace(/[^0-9]/g, ''), 10) || 0;
+
+  const data = {
+    id: editingProductId || genId(),
+    brandId,
+    name,
+    categoryMakeup: document.getElementById('formCategoryMakeup').value,
+    categorySkincare: document.getElementById('formCategorySkincare').value,
+    volume: document.getElementById('formVolume').value.trim(),
+    price: priceRaw,
+    priceNum,
+    purchaseDate: document.getElementById('formPurchaseDate').value,
+    ingredients: document.getElementById('formIngredients').value.trim(),
+    memo: document.getElementById('formMemo').value.trim(),
+    image: formImages[0] || null,
+    images: formImages.length > 0 ? [...formImages] : [],
+    createdAt: editingProductId
+      ? (await dbGet('products', editingProductId))?.createdAt || new Date().toISOString()
+      : new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  await dbPut('products', data);
+  await markDataUpdated();
+  toast(editingProductId ? '商品を更新しました' : '商品を登録しました');
+
+  if (editingProductId) {
+    currentProductId = editingProductId;
+    editingProductId = null;
+    screenHistory.pop();
+    showScreen('detail', false);
+  } else {
+    editingProductId = null;
+    formSubmitted = true;
+    goBack();
+  }
+}
+
+// --- フォーム入力時のスクロール位置補正 ---
+document.getElementById('screenForm').addEventListener('focus', (e) => {
+  if (e.target.matches('input, textarea, select')) {
+    setTimeout(() => {
+      e.target.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+    }, 350);
+  }
+}, true);
+
+
+/* ══════════════════════════════════════════
+   #INGREDIENT 成分整形補助
+   ══════════════════════════════════════════ */
+
+// --- 成分テキストの自動整形（OCRゴミ除去・区切り統一など） ---
+function formatIngredients() {
+  const ta = document.getElementById('formIngredients');
+  let text = ta.value;
+  if (!text.trim()) { toast('成分テキストを入力してください'); return; }
+
+  text = text.replace(/\r?\n/g, '');           // 改行を除去
+  text = text.replace(/ +/g, '');              // 半角スペースをすべて削除
+  text = text.replace(/[●◆◇■□▲△▼▽★☆※＊]/g, ''); // OCRゴミ記号を除去
+  text = text.trim();                          // 前後の空白除去
+
+  // 区切り文字を「、」に統一（スラッシュは除外）
+  text = text.replace(/[,，・]/g, '、');
+  text = text.replace(/、{2,}/g, '、');         // 重複読点を1つに
+  text = text.replace(/\s*、\s*/g, '、');       // 読点前後の空白を除去
+
+  ta.value = text;
+  toast('成分テキストを整形しました');
+}
+
+
+/* ══════════════════════════════════════════
+   #MEMO_JS メモ機能ロジック
+   ══════════════════════════════════════════ */
+
+// --- メモフォーム初期値（変更検知用） ---
+let memoFormOriginalTitle = '';
+let memoFormOriginalBody = '';
+
+// --- メモ一覧を描画 ---
+async function renderMemos() {
+  await loadAllData();
+  const query = document.getElementById('searchInput').value.trim().toLowerCase();
+  const rawQuery = document.getElementById('searchInput').value.trim();
+  const list = document.getElementById('memoList');
+  const empty = document.getElementById('memoEmpty');
+
+  let memos = allMemos;
+  // 検索フィルタ
+  if (query) {
+    memos = memos.filter(m => {
+      const text = [m.title, m.body].join(' ').toLowerCase();
+      return text.includes(query);
+    });
+  }
+
+  // --- ソート適用 ---
+  const [sortField, sortOrder] = currentMemoSort.split('_');
+  const dir = sortOrder === 'asc' ? 1 : -1;
+  memos = memos.slice().sort((a, b) => {
+    if (sortField === 'name') {
+      const va = a.title || '';
+      const vb = b.title || '';
+      return va.localeCompare(vb, 'ja') * dir;
+    }
+    const va = a.updatedAt || a.createdAt || '';
+    const vb = b.updatedAt || b.createdAt || '';
+    return va.localeCompare(vb, 'ja') * dir;
+  });
+
+  // 0件時の表示
+  if (memos.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'flex';
+    return;
+  }
+
+  // カード一覧を生成
+  empty.style.display = 'none';
+  list.innerHTML = memos.map(m => {
+    const date = m.updatedAt
+      ? new Date(m.updatedAt).toLocaleDateString('ja-JP')
+      : m.createdAt
+        ? new Date(m.createdAt).toLocaleDateString('ja-JP')
+        : '';
+    return `<div class="memo-card" data-id="${m.id}" onclick="openMemoDetail('${m.id}')">
+      <div class="memo-title">${escHL(m.title, rawQuery)}</div>
+      <div class="memo-preview">${escHL(m.body || '', rawQuery)}</div>
+      <div class="memo-date">${date}</div>
+    </div>`;
+  }).join('');
+}
+
+// --- メモをタップ → 詳細画面へ ---
+function openMemoDetail(id) {
+  currentMemoId = id;
+  showScreen('memoDetail');
+}
+
+// --- メモ詳細画面を描画 ---
+async function renderMemoDetail() {
+  const m = await dbGet('memos', currentMemoId);
+  if (!m) return;
+  const rawQuery = document.getElementById('searchInput').value.trim();
+  const date = m.updatedAt
+    ? new Date(m.updatedAt).toLocaleDateString('ja-JP')
+    : m.createdAt
+      ? new Date(m.createdAt).toLocaleDateString('ja-JP')
+      : '';
+  let html = `<div class="detail-title">${escHL(m.title, rawQuery)}</div>`;
+  html += `<div class="detail-brand">${date}</div>`;
+  if (m.body) {
+    html += `<div class="detail-section">
+      <div class="detail-section-content memo-content">${escHL(m.body, rawQuery)}</div>
+    </div>`;
+  }
+  document.getElementById('memoDetailBody').innerHTML = html;
+}
+
+// --- メモフォームを開く（新規 or 編集） ---
+function openMemoForm(memoId) {
+  editingMemoId = memoId;
+  document.getElementById('memoFormTitle').value = '';
+  document.getElementById('memoFormBody').value = '';
+
+  // 編集時：既存データをフォームに読み込む
+  if (memoId) {
+    dbGet('memos', memoId).then(m => {
+      if (m) {
+        document.getElementById('memoFormTitle').value = m.title || '';
+        document.getElementById('memoFormBody').value = m.body || '';
+      }
+      // 初期値を記憶（変更検知用）
+      memoFormOriginalTitle = document.getElementById('memoFormTitle').value;
+      memoFormOriginalBody = document.getElementById('memoFormBody').value;
+    });
+  } else {
+    // 新規：初期値は空
+    memoFormOriginalTitle = '';
+    memoFormOriginalBody = '';
+  }
+  showScreen('memoForm');
+}
+
+// --- メモの自動保存（戻る操作時に呼ばれる） ---
+async function autoSaveMemo() {
+  const title = document.getElementById('memoFormTitle').value.trim();
+  if (!title) return; // タイトルが空なら保存しない
+
+  const body = document.getElementById('memoFormBody').value.trim();
+
+  // 内容に変更がなければ保存しない
+  if (title === memoFormOriginalTitle.trim() && body === memoFormOriginalBody.trim()) {
+    editingMemoId = null;
+    return;
+  }
+
+  const data = {
+    id: editingMemoId || genId(),
+    title,
+    body,
+    createdAt: editingMemoId
+      ? (await dbGet('memos', editingMemoId))?.createdAt || new Date().toISOString()
+      : new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  await dbPut('memos', data);
+  await markDataUpdated();
+  toast(editingMemoId ? 'メモを更新しました' : 'メモを登録しました');
+  editingMemoId = null;
+}
+
+// --- メモをDBに保存（新規登録 or 更新） ---
+async function submitMemo() {
+  const title = document.getElementById('memoFormTitle').value.trim();
+  if (!title) { toast('タイトルを入力してください'); return; }
+
+  const data = {
+    id: editingMemoId || genId(),
+    title,
+    body: document.getElementById('memoFormBody').value.trim(),
+    createdAt: editingMemoId
+      ? (await dbGet('memos', editingMemoId))?.createdAt || new Date().toISOString()
+      : new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  await dbPut('memos', data);
+  await markDataUpdated();
+  toast(editingMemoId ? 'メモを更新しました' : 'メモを登録しました');
+
+  if (editingMemoId) {
+    // 編集後 → 詳細画面に戻る
+    currentMemoId = editingMemoId;
+    editingMemoId = null;
+    screenHistory.pop();
+    showScreen('memoDetail', false);
+  } else {
+    // 新規登録後 → 前の画面に戻る
+    editingMemoId = null;
+    formSubmitted = true;
+    goBack();
+  }
+}
+
+// --- メモ編集ボタン ---
+function editMemo() {
+  openMemoForm(currentMemoId);
+}
+
+// --- メモ削除確認モーダルを表示 ---
+function confirmDeleteMemo() {
+  showModal({
+    title: 'メモを削除',
+    content: 'このメモを削除しますか？この操作は取り消せません。',
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '削除', cls: 'modal-danger', action: deleteMemo }
+    ]
+  });
+}
+
+// --- メモをDBから削除 ---
+async function deleteMemo() {
+  await dbDelete('memos', currentMemoId);
+  await markDataUpdated();
+  closeModal();
+  toast('メモを削除しました');
+  goBack();
+}
+
+
+/* ══════════════════════════════════════════
+   #SEARCH_JS 検索処理
+   ══════════════════════════════════════════ */
+
+// --- 検索入力時の処理（現在の画面に応じて再描画） ---
+function onSearch() {
+  const q = document.getElementById('searchInput').value;
+  document.getElementById('searchClear').classList.toggle('show', q.length > 0);
+
+  if (currentTab === 'card') {
+    if (currentScreen === 'brand') renderBrands();
+    else if (currentScreen === 'products') renderProducts();
+  } else {
+    renderMemos();
+  }
+}
+
+// --- 検索欄をクリア ---
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').classList.remove('show');
+  onSearch();
+}
+
+
+/* ══════════════════════════════════════════
+   #SETTINGS_JS 設定画面（バックアップ＋カテゴリ管理）
+   ══════════════════════════════════════════ */
+
+// ===== バックアップ処理 =====
+
+// --- バックアップ警告の表示判定 ---
+async function checkBackupReminder() {
+  const metaUpdated = await dbGet('meta', 'lastUpdated');
+  const metaBackup = await dbGet('meta', 'lastBackup');
+  const reminder = document.getElementById('backupReminder');
+  const dateEl = document.getElementById('lastBackupDate');
+
+  if (metaBackup?.value) {
+    dateEl.textContent = `最終バックアップ：${new Date(metaBackup.value).toLocaleString('ja-JP')}`;
+  } else {
+    dateEl.textContent = '最終バックアップ：なし';
+  }
+
+  if (metaUpdated?.value && (!metaBackup?.value || metaUpdated.value > metaBackup.value)) {
+    reminder.classList.add('show');
+  } else {
+    reminder.classList.remove('show');
+  }
+}
+
+// --- BlobをBase64文字列に変換するユーティリティ ---
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    if (!blob) { resolve(null); return; }
+    if (typeof blob === 'string') { resolve(blob); return; } // すでにbase64の場合はそのまま
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+// --- Base64文字列をBlobに変換するユーティリティ ---
+function base64ToBlob(base64) {
+  if (!base64) return null;
+  if (base64 instanceof Blob) return base64; // すでにBlobの場合はそのまま
+  const [header, data] = base64.split(',');
+  const mime = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
+  const binary = atob(data);
+  const array = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    array[i] = binary.charCodeAt(i);
+  }
+  return new Blob([array], { type: mime });
+}
+
+// --- エクスポート（JSONファイルとしてダウンロード、画像はBase64に変換して含める） ---
+async function exportData() {
+  await loadAllData();
+  await loadCategories();
+
+  // 画像BlobをBase64に変換した商品データを作成
+  const productsForExport = await Promise.all(allProducts.map(async (p) => {
+    const exported = { ...p };
+    if (p.images?.length > 0) {
+      exported.images = await Promise.all(p.images.map(img => blobToBase64(img)));
+      exported.image = exported.images[0] || null;
+    }
+    return exported;
+  }));
+
+  const data = {
+    version: 3,
+    exportedAt: new Date().toISOString(),
+    brands: allBrands,
+    products: productsForExport,
+    memos: allMemos,
+    categories: allCategories
+  };
+
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  a.href = url;
+  a.download = `pegcosme_backup_${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  await dbPut('meta', { key: 'lastBackup', value: new Date().toISOString() });
+  toast('バックアップを保存しました');
+  checkBackupReminder();
+}
+
+// --- インポートボタン → ファイル選択ダイアログを開く ---
+function importData() {
+  document.getElementById('importInput').click();
+}
+
+// --- インポートファイル選択後の確認 ---
+function onImportSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  e.target.value = '';
+
+  setTimeout(() => {
+    if (confirm('現在のデータはすべて上書きされます。復元しますか？')) {
+      doImport(file);
+    }
+  }, 300);
+}
+
+// --- インポート実行（Base64画像をBlobに変換してDBに保存） ---
+async function doImport(file) {
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+
+    if (!data.brands || !data.products) {
+      toast('無効なバックアップファイルです');
+      return;
+    }
+
+    if (!db) await openDB();
+    if (!db) { toast('DB接続に失敗しました'); return; }
+
+    await dbClear('brands');
+    await dbClear('products');
+    await dbClear('memos');
+    await dbClear('categories');
+
+    for (const b of data.brands) await dbPut('brands', b);
+
+    const skincareKW = ['化粧水','乳液','美容液','セラム','クリーム','クレンジング','洗顔','パック','マスク','トナー','エッセンス','ローション','オイル'];
+    const importedCats = [];
+    if (data.categories) {
+      for (const c of data.categories) {
+        if (!c.group) {
+          c.group = skincareKW.some(kw => c.name.includes(kw)) ? 'skincare' : 'makeup';
+        }
+        await dbPut('categories', c);
+        importedCats.push(c);
+      }
+    }
+
+    // 商品読み込み（Base64画像をBlobに変換、旧形式のcategoryも変換）
+    for (const p of data.products) {
+      if (p.category !== undefined && p.categoryMakeup === undefined && p.categorySkincare === undefined) {
+        const cat = importedCats.find(c => c.name === p.category);
+        if (cat && cat.group === 'skincare') {
+          p.categorySkincare = p.category;
+          p.categoryMakeup = '';
+        } else {
+          p.categoryMakeup = p.category || '';
+          p.categorySkincare = '';
+        }
+        delete p.category;
+      }
+
+      // image → images 配列移行
+      if (p.images === undefined) {
+        p.images = p.image ? [p.image] : [];
+      }
+      if (!p.image && p.images.length > 0) {
+        p.image = p.images[0];
+      }
+
+      // Base64文字列をBlobに変換
+      p.images = p.images.map(img => base64ToBlob(img)).filter(Boolean);
+      p.image = p.images[0] || null;
+
+      await dbPut('products', p);
+    }
+
+    if (data.memos) {
+      for (const m of data.memos) await dbPut('memos', m);
+    }
+
+    await loadCategories();
+    await markDataUpdated();
+    await dbPut('meta', { key: 'lastBackup', value: new Date().toISOString() });
+    await dbPut('meta', { key: 'migratedToGroupedCats', value: true });
+    await dbPut('meta', { key: 'migratedToImagesArray', value: true });
+
+    toast('データを復元しました');
+    screenHistory = [];
+    switchTab('card');
+  } catch (err) {
+    toast('復元に失敗：' + (err.message || err));
+    console.error(err);
+  }
+}
+
+// ===== カテゴリ管理 =====
+
+// --- カテゴリ一覧の読み込み ---
+async function loadCategories() {
+  allCategories = await dbGetAll('categories');
+  allCategories.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+}
+
+// --- カテゴリ1行分のHTMLを生成（内部用） ---
+function renderCatItem(cat, count, isFirst, isLast) {
+  return `
+    <div class="cat-item">
+      <div class="cat-item-name">${esc(cat.name)}</div>
+      <div class="cat-item-count">${count}件</div>
+      <button class="cat-item-order-btn${isFirst ? ' disabled' : ''}" onclick="moveCategoryUp('${cat.id}')" title="上へ">▲</button>
+      <button class="cat-item-order-btn${isLast ? ' disabled' : ''}" onclick="moveCategoryDown('${cat.id}')" title="下へ">▼</button>
+      <button class="cat-item-btn" onclick="showEditCategoryModal('${cat.id}')" title="編集">
+        <svg viewBox="0 0 24 24"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+      </button>
+      <button class="cat-item-btn delete" onclick="showDeleteCategoryModal('${cat.id}')" title="削除">
+        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+      </button>
+    </div>`;
+}
+
+// --- カテゴリ一覧の描画（設定画面内、グループ別表示） ---
+async function renderCategoryList() {
+  await loadCategories();
+  await loadAllData();
+  const container = document.getElementById('catList');
+
+  const makeupCats = allCategories.filter(c => c.group === 'makeup');
+  const skincareCats = allCategories.filter(c => c.group === 'skincare');
+
+  let html = '';
+
+  html += '<div class="cat-group-header">メイク</div>';
+  if (makeupCats.length === 0) {
+    html += '<div style="font-size:13px;color:var(--text-lighter);padding:4px 0 8px;">カテゴリなし</div>';
+  } else {
+    for (let i = 0; i < makeupCats.length; i++) {
+      const cat = makeupCats[i];
+      const count = allProducts.filter(p => p.categoryMakeup === cat.name).length;
+      html += renderCatItem(cat, count, i === 0, i === makeupCats.length - 1);
+    }
+  }
+  html += '<button class="cat-add-group-btn" onclick="showAddCategoryModalInSettings(\'makeup\')">＋ メイクカテゴリを追加</button>';
+
+  html += '<div class="cat-group-header" style="margin-top:16px;">スキンケア</div>';
+  if (skincareCats.length === 0) {
+    html += '<div style="font-size:13px;color:var(--text-lighter);padding:4px 0 8px;">カテゴリなし</div>';
+  } else {
+    for (let i = 0; i < skincareCats.length; i++) {
+      const cat = skincareCats[i];
+      const count = allProducts.filter(p => p.categorySkincare === cat.name).length;
+      html += renderCatItem(cat, count, i === 0, i === skincareCats.length - 1);
+    }
+  }
+  html += '<button class="cat-add-group-btn" onclick="showAddCategoryModalInSettings(\'skincare\')">＋ スキンケアカテゴリを追加</button>';
+
+  container.innerHTML = html;
+}
+
+// --- カテゴリ追加モーダル（設定画面用） ---
+function showAddCategoryModalInSettings(group) {
+  const groupLabel = group === 'skincare' ? 'スキンケア' : 'メイク';
+  showModal({
+    title: `${groupLabel}カテゴリを追加`,
+    content: '<input type="text" class="modal-input" id="catInput" placeholder="カテゴリ名を入力" maxlength="30">',
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '追加', cls: 'modal-primary', action: () => addCategory(group) }
+    ]
+  });
+  setTimeout(() => {
+    const input = document.getElementById('catInput');
+    if (input) input.focus();
+  }, 100);
+}
+
+// --- カテゴリ追加の実行（設定画面用） ---
+async function addCategory(group) {
+  const input = document.getElementById('catInput');
+  const name = input?.value.trim();
+  if (!name) {
+    toast('カテゴリ名を入力してください');
+    return;
+  }
+  if (allCategories.some(c => c.name === name)) {
+    toast('同じ名前のカテゴリが既にあります');
+    return;
+  }
+  const maxOrder = allCategories.reduce((max, c) => Math.max(max, c.order ?? 0), -1);
+  await dbPut('categories', { id: genId(), name, group, order: maxOrder + 1 });
+  await markDataUpdated();
+  closeModal();
+  toast('カテゴリを追加しました');
+  renderCategoryList();
+}
+
+// --- カテゴリ編集モーダル ---
+function showEditCategoryModal(catId) {
+  const cat = allCategories.find(c => c.id === catId);
+  if (!cat) return;
+  showModal({
+    title: 'カテゴリを編集',
+    content: `<input type="text" class="modal-input" id="catInput" value="${esc(cat.name)}" maxlength="30">`,
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '保存', cls: 'modal-primary', action: () => updateCategory(catId) }
+    ]
+  });
+  setTimeout(() => {
+    const input = document.getElementById('catInput');
+    if (input) { input.focus(); input.select(); }
+  }, 100);
+}
+
+// --- カテゴリ編集の実行 ---
+async function updateCategory(catId) {
+  const input = document.getElementById('catInput');
+  const newName = input?.value.trim();
+  if (!newName) {
+    toast('カテゴリ名を入力してください');
+    return;
+  }
+  const cat = allCategories.find(c => c.id === catId);
+  if (!cat) return;
+  if (allCategories.some(c => c.id !== catId && c.name === newName)) {
+    toast('同じ名前のカテゴリが既にあります');
+    return;
+  }
+  const oldName = cat.name;
+  cat.name = newName;
+  await dbPut('categories', cat);
+  if (oldName !== newName) {
+    await loadAllData();
+    const field = cat.group === 'skincare' ? 'categorySkincare' : 'categoryMakeup';
+    for (const p of allProducts) {
+      if (p[field] === oldName) {
+        p[field] = newName;
+        await dbPut('products', p);
+      }
+    }
+  }
+  await markDataUpdated();
+  closeModal();
+  toast('カテゴリを更新しました');
+  renderCategoryList();
+}
+
+// --- カテゴリ削除モーダル ---
+function showDeleteCategoryModal(catId) {
+  const cat = allCategories.find(c => c.id === catId);
+  if (!cat) return;
+  const field = cat.group === 'skincare' ? 'categorySkincare' : 'categoryMakeup';
+  const count = allProducts.filter(p => p[field] === cat.name).length;
+  let msg = `「${esc(cat.name)}」を削除しますか？`;
+  if (count > 0) {
+    msg += `<br><br><span style="color:var(--accent);font-size:13px;">この操作により、このカテゴリを使用中の ${count} 件の商品が「未分類」に変更されます。</span>`;
+  }
+  showModal({
+    title: 'カテゴリを削除',
+    content: msg,
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '削除する', cls: 'modal-danger', action: () => deleteCategory(catId) }
+    ]
+  });
+}
+
+// --- カテゴリ削除の実行 ---
+async function deleteCategory(catId) {
+  const cat = allCategories.find(c => c.id === catId);
+  if (!cat) return;
+  await loadAllData();
+  const field = cat.group === 'skincare' ? 'categorySkincare' : 'categoryMakeup';
+  for (const p of allProducts) {
+    if (p[field] === cat.name) {
+      p[field] = '';
+      await dbPut('products', p);
+    }
+  }
+  await dbDelete('categories', catId);
+  await markDataUpdated();
+  closeModal();
+  toast('カテゴリを削除しました');
+  renderCategoryList();
+}
+
+// --- カテゴリを1つ上に移動 ---
+async function moveCategoryUp(catId) {
+  await loadCategories();
+  const cat = allCategories.find(c => c.id === catId);
+  if (!cat) return;
+  const group = allCategories.filter(c => c.group === cat.group);
+  const idx = group.findIndex(c => c.id === catId);
+  if (idx <= 0) return;
+  [group[idx], group[idx - 1]] = [group[idx - 1], group[idx]];
+  for (let i = 0; i < group.length; i++) {
+    group[i].order = i;
+    await dbPut('categories', group[i]);
+  }
+  await markDataUpdated();
+  renderCategoryList();
+}
+
+// --- カテゴリを1つ下に移動 ---
+async function moveCategoryDown(catId) {
+  await loadCategories();
+  const cat = allCategories.find(c => c.id === catId);
+  if (!cat) return;
+  const group = allCategories.filter(c => c.group === cat.group);
+  const idx = group.findIndex(c => c.id === catId);
+  if (idx < 0 || idx >= group.length - 1) return;
+  [group[idx], group[idx + 1]] = [group[idx + 1], group[idx]];
+  for (let i = 0; i < group.length; i++) {
+    group[i].order = i;
+    await dbPut('categories', group[i]);
+  }
+  await markDataUpdated();
+  renderCategoryList();
+}
+
+// ===== ブランド管理 =====
+
+// --- ブランド管理一覧を描画 ---
+async function renderBrandManageList() {
+  await loadAllData();
+  const container = document.getElementById('brandManageList');
+  const brands = allBrands.slice().sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+
+  if (brands.length === 0) {
+    container.innerHTML = '<div style="font-size:13px;color:var(--text-lighter);padding:12px 0;">ブランドが登録されていません</div>';
+    return;
+  }
+
+  let html = '';
+  for (const b of brands) {
+    const count = allProducts.filter(p => p.brandId === b.id).length;
+    html += `
+    <div class="cat-item">
+      <div class="cat-item-name">${esc(b.name)}</div>
+      <div class="cat-item-count">${count}件</div>
+      <button class="cat-item-btn" onclick="showEditBrandModal('${b.id}')" title="編集">
+        <svg viewBox="0 0 24 24"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+      </button>
+      <button class="cat-item-btn delete" onclick="showDeleteBrandModalFromManage('${b.id}')" title="削除">
+        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+      </button>
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+// --- ブランド編集モーダル ---
+function showEditBrandModal(brandId) {
+  const brand = allBrands.find(b => b.id === brandId);
+  if (!brand) return;
+  showModal({
+    title: 'ブランド名を編集',
+    content: `<input type="text" class="modal-input" id="brandEditInput" value="${esc(brand.name)}" maxlength="60">`,
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '保存', cls: 'modal-primary', action: () => updateBrandName(brandId) }
+    ]
+  });
+  setTimeout(() => {
+    const input = document.getElementById('brandEditInput');
+    if (input) { input.focus(); input.select(); }
+  }, 100);
+}
+
+// --- ブランド名更新の実行 ---
+async function updateBrandName(brandId) {
+  const input = document.getElementById('brandEditInput');
+  const newName = input?.value.trim();
+  if (!newName) {
+    toast('ブランド名を入力してください');
+    return;
+  }
+  const brand = allBrands.find(b => b.id === brandId);
+  if (!brand) return;
+  if (allBrands.some(b => b.id !== brandId && b.name === newName)) {
+    toast('同じ名前のブランドが既にあります');
+    return;
+  }
+  brand.name = newName;
+  await dbPut('brands', brand);
+  await markDataUpdated();
+  closeModal();
+  toast('ブランド名を更新しました');
+  renderBrandManageList();
+}
+
+// --- ブランド削除モーダル（ブランド管理画面用） ---
+function showDeleteBrandModalFromManage(brandId) {
+  const brand = allBrands.find(b => b.id === brandId);
+  if (!brand) return;
+  const count = allProducts.filter(p => p.brandId === brandId).length;
+  const countText = count > 0 ? `（商品${count}件も削除されます）` : '';
+  showModal({
+    title: brand.name,
+    content: `<p style="font-size:14px; color:var(--text-light); margin:0;">このブランドを削除しますか？${countText}</p>`,
+    actions: [
+      { text: '削除', cls: 'modal-delete', action: () => deleteBrandFromManage(brandId) },
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal }
+    ]
+  });
+}
+
+// --- ブランド削除の実行（ブランド管理画面用） ---
+async function deleteBrandFromManage(brandId) {
+  const products = allProducts.filter(p => p.brandId === brandId);
+  for (const p of products) {
+    await dbDelete('products', p.id);
+  }
+  await dbDelete('brands', brandId);
+  await markDataUpdated();
+  closeModal();
+  toast('ブランドを削除しました');
+  renderBrandManageList();
+}
+
+/* ══════════════════════════════════════════
+   #MODAL_JS モーダル制御
+   ══════════════════════════════════════════ */
+
+// --- モーダルを表示（タイトル・本文・ボタンを動的に生成） ---
+function showModal({ title, content, actions }) {
+  document.getElementById('modalHeader').textContent = title;
+  document.getElementById('modalContent').innerHTML = content;
+  const actionsEl = document.getElementById('modalActions');
+  actionsEl.innerHTML = '';
+  actions.forEach(a => {
+    const btn = document.createElement('button');
+    btn.className = a.cls;
+    btn.textContent = a.text;
+    btn.onclick = a.action;
+    actionsEl.appendChild(btn);
+  });
+  document.getElementById('modal').classList.add('show');
+}
+
+// --- モーダルを閉じる ---
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+
+// --- モーダル外タップで閉じる ---
+document.getElementById('modal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+
+
+/* ══════════════════════════════════════════
+   #LIGHTBOX_JS 画像全画面モーダル制御
+   ══════════════════════════════════════════ */
+
+// --- ライトボックスの状態 ---
+let lightboxImages = [];
+let lightboxIndex = 0;
+let lightboxClosing = false;
+
+// --- スワイプ検出用 ---
+let lbTouchStartX = 0;
+let lbTouchStartY = 0;
+let lbTouchStartTime = 0;
+let lbTouchFingers = 0;
+
+// --- ライトボックスを開く（詳細画面の画像タップ時） ---
+async function openLightbox() {
+  const p = await dbGet('products', currentProductId);
+  if (!p?.images?.length) return;
+  lightboxImages = [...p.images];
+  lightboxIndex = 0;
+  showLightbox();
+  history.pushState({ screen: currentScreen, lightbox: true }, '');
+}
+
+// --- ライトボックスの表示を更新 ---
+function showLightbox() {
+  const overlay = document.getElementById('lightbox');
+  const wrap = document.getElementById('lightboxImageWrap');
+  const dots = document.getElementById('lightboxDots');
+
+  const blob = lightboxImages[lightboxIndex];
+  const url = (typeof blob === 'string') ? blob : URL.createObjectURL(blob);
+  wrap.innerHTML = `<img src="${url}" alt="" onload="${typeof blob !== 'string' ? 'URL.revokeObjectURL(this.src)' : ''}">`;
+
+  if (lightboxImages.length > 1) {
+    dots.innerHTML = lightboxImages.map((_, i) =>
+      `<span class="lightbox-dot${i === lightboxIndex ? ' active' : ''}"></span>`
+    ).join('');
+    dots.style.display = 'flex';
+  } else {
+    dots.style.display = 'none';
+  }
+
+  overlay.classList.add('show');
+}
+
+// --- ライトボックスを閉じる（×ボタン用） ---
+function closeLightbox() {
+  if (!document.getElementById('lightbox').classList.contains('show')) return;
+  document.getElementById('lightbox').classList.remove('show');
+  lightboxImages = [];
+  lightboxIndex = 0;
+  lightboxClosing = true;
+  history.back();
+}
+
+// --- ライトボックス内のスワイプ開始 ---
+function onLightboxTouchStart(e) {
+  lbTouchFingers = e.touches.length;
+  if (lbTouchFingers >= 2) return;
+  lbTouchStartX = e.touches[0].clientX;
+  lbTouchStartY = e.touches[0].clientY;
+  lbTouchStartTime = Date.now();
+}
+
+// --- ライトボックス内のタッチ移動（2本指はスルー） ---
+function onLightboxTouchMove(e) {
+  if (e.touches.length === 1 && lightboxImages.length > 1) {
+    const dx = Math.abs(e.touches[0].clientX - lbTouchStartX);
+    const dy = Math.abs(e.touches[0].clientY - lbTouchStartY);
+    if (dx > dy && dx > 10) {
+      e.preventDefault();
+    }
+  }
+}
+document.getElementById('lightbox').addEventListener('touchmove', onLightboxTouchMove, { passive: false });
+
+// --- ライトボックス内のスワイプ終了 ---
+function onLightboxTouchEnd(e) {
+  if (lbTouchFingers >= 2) return;
+  if (lightboxImages.length <= 1) return;
+
+  const dx = e.changedTouches[0].clientX - lbTouchStartX;
+  const dy = e.changedTouches[0].clientY - lbTouchStartY;
+  const dt = Date.now() - lbTouchStartTime;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+
+  if (absDx > 60 && absDx > absDy * 2 && dt < 400) {
+    if (dx < 0 && lightboxIndex < lightboxImages.length - 1) {
+      lightboxIndex++;
+      showLightbox();
+    } else if (dx > 0 && lightboxIndex > 0) {
+      lightboxIndex--;
+      showLightbox();
+    }
+  }
+}
+
+
+/* ══════════════════════════════════════════
+   #TOAST_JS トースト制御
+   ══════════════════════════════════════════ */
+
+let toastTimer = null;
+
+// --- トースト通知を表示（2秒後に自動で消える） ---
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+
+/* ══════════════════════════════════════════
+   #UTIL ユーティリティ関数
+   ══════════════════════════════════════════ */
+
+// --- HTMLエスケープ（XSS対策） ---
+function esc(s) {
+  if (!s) return '';
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// --- HTMLエスケープ＋検索ハイライト ---
+function escHL(s, query) {
+  if (!s) return '';
+  const escaped = esc(s);
+  if (!query) return escaped;
+  const eq = esc(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (!eq) return escaped;
+  return escaped.replace(new RegExp(`(${eq})`, 'gi'), '<mark class="hl">$1</mark>');
+}
+
+/* ══════════════════════════════════════════
+   #INIT 初期化
+   ══════════════════════════════════════════ */
+
+// --- 既存商品のimage→images配列移行（一度だけ実行） ---
+async function migrateProductImages() {
+  const migrated = await dbGet('meta', 'migratedToImagesArray');
+  if (migrated) return;
+
+  const products = await dbGetAll('products');
+  for (const p of products) {
+    if (p.images === undefined) {
+      p.images = p.image ? [p.image] : [];
+      await dbPut('products', p);
+    }
+  }
+  await dbPut('meta', { key: 'migratedToImagesArray', value: true });
+}
+
+// --- アプリ起動時の処理 ---
+(async function init() {
+  await openDB();
+  await migrateProductCategories();
+  await migrateProductImages();
+  await loadCategories();
+
+  // --- キーボード表示時のビューポート調整 ---
+  // interactive-widget=resizes-content により、キーボード表示時に
+  // レイアウトビューポート自体がリサイズされる。
+  // 以下は補助的なフォールバックとフォーカス管理。
+  if (window.visualViewport) {
+    const mainArea = document.getElementById('mainArea');
+    const initHeight = window.visualViewport.height; // 起動時の高さを記録
+    let kbOpen = false;
+
+    const updateVH = () => {
+      const h = window.visualViewport.height;
+      document.documentElement.style.setProperty('--app-h', h + 'px');
+
+      // キーボード表示判定（起動時の75%未満なら表示中）
+      const isKB = h < initHeight * 0.75;
+      if (isKB !== kbOpen) {
+        kbOpen = isKB;
+        document.body.classList.toggle('keyboard-open', isKB);
+      }
+
+      // 念のためスクロール位置リセット
+      window.scrollTo(0, 0);
+    };
+
+    window.visualViewport.addEventListener('resize', updateVH);
+    window.visualViewport.addEventListener('scroll', () => {
+      window.scrollTo(0, 0);
+    });
+    updateVH();
+
+    // フォーム入力欄フォーカス時：mainArea内でスクロールして見せる
+    mainArea.addEventListener('focusin', (e) => {
+      const el = e.target;
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          setTimeout(() => window.scrollTo(0, 0), 200);
+        }, 300);
+      }
+    });
+  }
+
+  // 初期状態をブラウザ履歴に設定
+  history.replaceState({ screen: 'brand' }, '');
+  showScreen('brand', false);
+})();
+
+</script>
+</body>
+</html>
