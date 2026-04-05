@@ -83,12 +83,25 @@
 }
 
 /* --- ページ全体の基本設定 --- */
-html, body {
-  height: var(--app-h, 100%); overflow: hidden;
-  font-family: var(--font); font-size: 15px;
-  color: var(--text); background: var(--bg);
+html {
+  height: var(--app-h, 100%);
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  font-family: var(--font);
+  font-size: 15px;
+  color: var(--text);
+  background: var(--bg);
   -webkit-tap-highlight-color: transparent;
   -webkit-text-size-adjust: 100%;
+}
+body {
+  height: 100%;
+  overflow: hidden;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: inherit;
 }
 
 /* --- フォーム部品・ボタン・画像の共通リセット --- */
@@ -110,7 +123,7 @@ img { display: block; max-width: 100%; }
 }
 
 /* --- 各画面の表示切替（activeクラスで表示） --- */
-.screen { display: none; min-height: 100%; }
+.screen { display: none; }
 .screen.active { display: block; }
 #screenMemoForm.active {
   display: flex;
