@@ -4136,6 +4136,7 @@ function escHL(s, query) {
   return escaped.replace(new RegExp(`(${eq})`, 'gi'), '<mark class="hl">$1</mark>');
 }
 
+
 /* ══════════════════════════════════════════
    #INIT 初期化
    ══════════════════════════════════════════ */
@@ -4172,6 +4173,9 @@ async function migrateProductImages() {
     let kbOpen = false;
 
     const updateVH = () => {
+      // ピンチズーム中は--app-hを更新しない（空白防止）
+      if (window.visualViewport.scale > 1.01) return;
+
       const h = window.visualViewport.height;
       document.documentElement.style.setProperty('--app-h', h + 'px');
 
@@ -4209,6 +4213,7 @@ async function migrateProductImages() {
   history.replaceState({ screen: 'brand' }, '');
   showScreen('brand', false);
 })();
+
 
 </script>
 
@@ -4258,8 +4263,18 @@ window.addEventListener('appinstalled', () => {
 // Service Worker 登録＆更新通知
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then((reg) => {
+    // アプリが画面に戻った時にも更新チェックする
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        reg.update();
+      }
+    });
+
     reg.addEventListener('updatefound', () => {
       const newWorker = reg.installing;
+      // 既にcontrollerがある場合のみ通知（初回インストールでは出さない）
+      if (!navigator.serviceWorker.controller) return;
+
       newWorker.addEventListener('statechange', () => {
         if (newWorker.state === 'activated') {
           if (confirm('新しいバージョンがあります。更新しますか？')) {
