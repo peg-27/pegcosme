@@ -201,6 +201,17 @@ img { display: block; max-width: 100%; }
 .header-text-btn-danger { color: #ffb0b0; }
 .header-text-btn-danger:active { background: rgba(255,100,100,0.15); }
 
+/* --- ヘッダー中央の登録件数バッジ --- */
+.header-total-count {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 13px; font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  pointer-events: none;
+  display: none;
+}
+
 /* --- ドロップダウン共通 --- */
 .dropdown-overlay {
   position: fixed; inset: 0; z-index: 199;
@@ -321,6 +332,8 @@ img { display: block; max-width: 100%; }
     <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
   </button>
   <div class="header-title" id="headerTitle">PEG COSME</div>
+  <!-- 登録件数バッジ（トップ画面のみ表示） -->
+  <span class="header-total-count" id="headerTotalCount"></span>
   <!-- ソートボタン -->
   <button class="header-btn" id="btnSort" onclick="toggleSortDropdown()" title="並び替え" style="display:none">
     <svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
@@ -1683,6 +1696,7 @@ function showScreen(name, pushHistory = true) {
   const detailDeleteBtn = document.getElementById('btnDetailDelete');
   const memoSaveBtn = document.getElementById('btnMemoSave');
   const formSaveBtn = document.getElementById('btnFormSave');
+  const totalCount = document.getElementById('headerTotalCount');
 
   // デフォルト表示状態（一覧画面向け）
   backBtn.style.display = 'none';
@@ -1696,6 +1710,7 @@ function showScreen(name, pushHistory = true) {
   detailDeleteBtn.style.display = 'none';
   memoSaveBtn.style.display = 'none';
   formSaveBtn.style.display = 'none';
+  totalCount.style.display = 'none';
 
   // ドロップダウンを閉じる
   closeAllDropdowns();
@@ -1707,6 +1722,7 @@ function showScreen(name, pushHistory = true) {
       title.textContent = 'PEG COSME';
       sortBtn.style.display = 'flex';
       filterBtn.style.display = 'flex';
+      totalCount.style.display = 'block';
       renderBrands();
       break;
     case 'products':
@@ -2158,6 +2174,9 @@ async function loadAllData() {
 // --- ブランド一覧を描画 ---
 async function renderBrands() {
   await loadAllData();
+  // ヘッダーに登録アイテム総数を表示
+  document.getElementById('headerTotalCount').textContent = allProducts.length + '件';
+
   const query = document.getElementById('searchInput').value.trim().toLowerCase();
   const rawQuery = document.getElementById('searchInput').value.trim();
   const list = document.getElementById('brandList');
