@@ -142,6 +142,17 @@ img { display: block; max-width: 100%; }
      #HEADER ヘッダー・タブバー（CSS）
      ══════════════════════════════════════════ -->
 <style>
+
+/* --- Outfit フォント（サブセット埋め込み） --- */
+@font-face {
+    font-family: 'Outfit';
+    src: url('data:font/woff2;charset=utf-8;base64,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') format('woff2'),
+        url('data:font/woff;charset=utf-8;base64,d09GRgABAAAAAAk0AA8AAAAADRwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABHREVGAAAISAAAABYAAAAWABMADEdQT1MAAAhgAAAApwAAAP4siyaOR1NVQgAACQgAAAApAAAAKrj6uPRPUy8yAAAEfAAAAEYAAABgclZz6GNtYXAAAATEAAAARgAAAGQBEQGrZ2FzcAAACEAAAAAIAAAACAAAABBnbHlmAAABWAAAAl8AAALY2RqvxGhlYWQAAAP0AAAANgAAADYp01oxaGhlYQAABFwAAAAgAAAAJBGJC8lobXR4AAAELAAAADAAAAAwGhAB9GxvY2EAAAPYAAAAGgAAABoDuwLbbWF4cAAAA7gAAAAdAAAAIAAkAQNuYW1lAAAFFAAAAvoAAAYnfqGzmXBvc3QAAAgQAAAALQAAAD1TZQMFcHJlcAAABQwAAAAHAAAAB2gGjIV42m3QwWvTUBzA8fd7XVuoWAldF3pY1yxNs7aurWuTdFlbk1pdm4yNZbMHrU3XMRDcwInCBkq3eRLmRDx41//Aw24DwX/BixcvXiYehIE7CM38ZZvCwMOD997hvc/vSwbIPCH0Lt0nHuInl8gVQvIMxwgcw7EK6w+xfnGeBpxFmHU+xJNfk97kYZLu9402/H6HR7ic+p4iBEj25Ji+oh8JR4h3NEOlQoXmJ4ZYfwb40SAND0bxKCtsEOCluWUXCnbPtJ7mdM4uK62aINRait7h9Nx2QOnuGObOklLM6UJKrHdVtVsX04I2USQDxEJr7KI1z/ASF4bzZbWjsOc8gjXnDbxwnc0mqJYFiWbzr/ILKoX/KQGVkJ+ogMRy+NQgWncbPVuWO9szC7tZnVvVZp7o1Yf1xgN10vkMi7ffulrT3O7KWknP5Wsbs3MbteLaXLIZ3Hxv4X+u9xd6z6TAA2oZ1sN7FMaqQmIcEtX20GH1MEz3nWH41jco43OewzNf/yehp9ofqA1d9EYxZ5CKLrSQoedwCnvGVkeS7J5h9DqyjH3N9Wqi1ioa67pw415AWcauKJVRbOx0lTs3N2fVpbqIaHV5egyhp9oCasMkQkhIyp/9AGnAbRTcIDxg79cHYpnny+LBJ21lampFc5w2BK2YOjamxqyCrWu25By57d3isZNjcHCGlDtBQlTcwjK+6sVZ4F97H07gDQ/6IGQ9Hte45vWKGS/X6yVhcrlSWx3VRqYzxapQauBNL1Ca1DJZOSvmRiLD6VvS1MK4lNbi8WtX+XQ0Es00lNZ98gf5L6bnAHjaY2BkYGDgYdjCwMfgy8DGAOIhADMDIwAbNwEoAAAAAAAAIwAjACMAIwAjAFYAdgCuAM0BBQEvAWwAAAABAAAAARmabPAQO18PPPUACwPoAAAAANzb5f4AAAAA4DoXKv+A/q4OHgPcAAAACAACAAAAAAAAAq4AUQAAAAABTQAAAlgAAADQAAACsAAvAk4AUgMFAC8DRwBSAxoALwJeAFICKwAgeNpjYGRgYH7x7w8DA1/C/4Z/CXxyDEARFMADAKZmBmt42mNgYVJmnMDAysDA1MUUwcDA4A2hGeMYjBhlGVABIzInrSgxneEAgwJDMPOLf38YGJhfMLLA1DDeZtoGpBQYzADpggwaAAB42mNgYGBiYGBgBmIRIMkIplkYAoC0ABCCxBUYnBlcGdwZfIGiwf//o4j4g0T+P/l/6P/B/wf+7/6/6/8OsBkoAADRPBSwAAC4Af+FsASNAHjanVNLSxtRFD6TRGtQQ2kXxT7gUkpR0MljUTHSQhAD0kB8BIsVF5NkXnbMHWbuOCa/wK2r/oBS6N5lf0P/Rbddd9vv3rkRB8VFc7kz3/nOdx5z7g0RPTc+kEHZr4edYYNmYWW4QI/os8ZFWiJL4xJVaKLxDL2iS41nwX/XeA7rWuMyPaGfGs/TM/ql8QI9pd8aL9IV/dW4Qi+MS1Q0SmVYP4xvGhu0UPiocYEqhU8aF6lRsDUu0cvCV41nqFm41ngW/B+N5+hxsaxxmd4UlzSeJ7P4XuMFelv8ovGi8bp4pXGF3pWut3g4jnzXE6xRa9RZz7NZNxGOL9huxE/tgWCtRHg8itmyJ0QYN6tV1xde0jcH/KyaSX2uwVqbj0S8khn7tpsEVlQ367XaphNZ7qYWaYcuo61DO4p9PmKZ3HUE50F8XDM3zMb6ST5Q5uod7W7v8yE656yd2KOJFfhDK01TU3rFOLQdnoyG0di8GE8kHTk3Ktl5z/NjJrtlB9wRqRXZDETgD+xRbA8ZQu2ICQzjYKfDuqE9ysSdTLDKbrVrMpVMx8o01rnlB1Y/sFmKUTGLtVt7zBJNNp1gPIj8UMRm7Acmj9xqt915wEVbxCmkMUXkk0seCWLUoBp2HagHxsa7Swk8DjTSvws1p1N4BspuKa8HLqIY9rLKI5A3piZVsVwV6UHXJxNRnM7A3s7qg8sza9QGNwKKaSXn2UdlF3aAv1qEPk3sGtYm/BE4FyifKR+R/5q87xCW/Apf1Wa57C5iBHgObUzH4EzawG7QOp08WHHaV4+OML1teDkN9cw5qrShtFFvAlUAdoh3qpZ5EytwSiFUDiISaGX8GP4LPCc3alnrbq7pzOV5+uqMprNldAAkvytVncrTzhQydqAyxXgOwWRV5XyYOk1bRe9QR92QUGlvZ+7kMqyCuX+6pr5p99WddmPRObav5tnHU3pSfaukV9Zt0Z7CAreO3bmDMbLKiYfqRpmqiwBveWtddffa6Pi/ov4BH65ArQAAeNpjYGIAg/9zGIwYsAEeIGZkYGJkYmBmUGPQYNBiMACqNGYwY3IOAgBt2wO/AAAAAAEAAf//AA8AAQAAAAwAAAAAAAAAAgABAAMACwABAAB42i2Oqw7CQBBFz+62pY+kGk0QCIJAIxCkqhJNgkBBKgiK78VCAkHglrsDk9zJPM48cEDNlCV+0/Vb2tP+MtCSqU6MpL47Hs4DZYpMGV6Z19xV2djYERNmLFjT0bNT15HTGN/Et/mHyJxCbEElNfFl9Z+/q5uJKeKHUqqlxAfxQXywDV530r05K1WCfflMXvtSfNOuYFcq+yDXxM+c5YV99tcXDkMiVAB42mNgZGBg4GJQY9BgYHJx8wlh4MtJLMljkGBgAYoz/P/PAAcAbZcFXQAAAA==') format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* --- 上部固定ヘッダー --- */
 .header {
   height: var(--header-h); min-height: var(--header-h);
@@ -166,6 +177,13 @@ img { display: block; max-width: 100%; }
 .header-title {
   flex: 1; font-size: 17px; font-weight: 600;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-family: 'Outfit', sans-serif;
+}
+
+/* --- ロゴフォント（トップ画面のみ） --- */
+.header-title.logo-font {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 400;
 }
 
 /* --- ヘッダー右側のアイコンボタン --- */
@@ -1918,11 +1936,12 @@ function showScreen(name, pushHistory = true) {
   // ドロップダウンを閉じる
   closeAllDropdowns();
 
-  // 画面ごとの個別設定
+// 画面ごとの個別設定
   switch (name) {
     case 'brand':
       document.getElementById('screenBrand').classList.add('active');
       title.textContent = 'PEG COSME';
+      title.classList.add('logo-font');
       sortBtn.style.display = 'flex';
       filterBtn.style.display = 'flex';
       totalCount.style.display = 'block';
@@ -1936,6 +1955,7 @@ function showScreen(name, pushHistory = true) {
       document.getElementById('screenProducts').classList.add('active');
       backBtn.style.display = 'flex';
       title.textContent = getBrandName(currentBrandId);
+      title.classList.remove('logo-font');
       sortBtn.style.display = 'flex';
       filterBtn.style.display = 'flex';
       shouldResetSortForBrand = true;
@@ -1953,6 +1973,7 @@ function showScreen(name, pushHistory = true) {
       detailDeleteBtn.style.display = 'inline-block';
       detailDeleteBtn.onclick = confirmDeleteProduct;
       title.textContent = '商品詳細';
+      title.classList.remove('logo-font');
       renderDetail();
       break;
     case 'form':
@@ -1965,10 +1986,12 @@ function showScreen(name, pushHistory = true) {
       formSaveBtn.style.display = 'inline-block';
       formSaveBtn.textContent = editingProductId ? '更新' : '登録';
       title.textContent = editingProductId ? '商品を編集' : '商品を登録';
+      title.classList.remove('logo-font');
       break;
     case 'memo':
       document.getElementById('screenMemo').classList.add('active');
       title.textContent = 'PEG COSME';
+      title.classList.add('logo-font');
       sortBtn.style.display = 'flex';
       renderMemos();
       break;
@@ -1982,6 +2005,7 @@ function showScreen(name, pushHistory = true) {
       memoSaveBtn.style.display = 'inline-block';
       memoSaveBtn.textContent = editingMemoId ? '更新' : '登録';
       title.textContent = editingMemoId ? 'メモを編集' : 'メモを登録';
+      title.classList.remove('logo-font');
       break;
     case 'memoDetail':
       document.getElementById('screenMemoDetail').classList.add('active');
@@ -1995,6 +2019,7 @@ function showScreen(name, pushHistory = true) {
       detailDeleteBtn.style.display = 'inline-block';
       detailDeleteBtn.onclick = confirmDeleteMemo;
       title.textContent = 'メモ詳細';
+      title.classList.remove('logo-font');
       renderMemoDetail();
       break;
     case 'categoryManage':
@@ -2005,6 +2030,7 @@ function showScreen(name, pushHistory = true) {
       fab.style.display = 'none';
       settingsBtn.style.display = 'none';
       title.textContent = 'カテゴリ管理';
+      title.classList.remove('logo-font');
       renderCategoryList();
       break;
     case 'brandManage':
@@ -2015,6 +2041,7 @@ function showScreen(name, pushHistory = true) {
       fab.style.display = 'none';
       settingsBtn.style.display = 'none';
       title.textContent = 'ブランド管理';
+      title.classList.remove('logo-font');
       renderBrandManageList();
       break;
   }
