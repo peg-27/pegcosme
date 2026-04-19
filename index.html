@@ -90,10 +90,12 @@ html {
   width: 100%;
   font-family: var(--font);
   font-size: 15px;
+  font-weight: 600;
   color: var(--text);
   background: var(--bg);
   -webkit-tap-highlight-color: transparent;
   -webkit-text-size-adjust: 100%;
+  -webkit-text-stroke: 0.2px currentColor;
 }
 body {
   height: 100%;
@@ -1857,6 +1859,9 @@ let formImages = [];            // フォームで選択された画像のBase64
 
 let isPopState = false;         // popstateイベント処理中フラグ
 
+// --- スクロール位置保存用 ---
+let scrollPositions = {};       // 一覧画面ごとのスクロール位置を保存
+
 // --- ソート・フィルター状態 ---
 let currentSort = 'createdAt_desc';       // カードタブのソート（デフォルト：登録日新しい順）
 let currentMemoSort = 'date_desc';        // メモタブのソート（デフォルト：日付新しい順）
@@ -1885,8 +1890,38 @@ const MEMO_SORT_OPTIONS = [
   { key: 'name_asc',  label: '名前順（あ→わ）' },
 ];
 
+// --- スクロール位置のキーを取得（一覧画面のみ対象） ---
+function getScrollKey(screenName) {
+  if (screenName === 'brand') return 'brand';
+  if (screenName === 'products') return `products_${currentBrandId}`;
+  if (screenName === 'memo') return 'memo';
+  return null;  // 一覧画面ではない場合はnull
+}
+
+// --- スクロール位置の復元（描画完了を待ちながらリトライ） ---
+function restoreScrollPosition(target) {
+  const mainArea = document.getElementById('mainArea');
+  let attempts = 0;
+  const maxAttempts = 30;  // 最大30フレーム（約500ms）まで試す
+  const tryRestore = () => {
+    mainArea.scrollTop = target;
+    attempts++;
+    // 描画が追いつかず目標位置までスクロールできない場合はリトライ
+    if (mainArea.scrollTop < target - 1 && attempts < maxAttempts) {
+      requestAnimationFrame(tryRestore);
+    }
+  };
+  requestAnimationFrame(tryRestore);
+}
+
 // --- 画面切替のメイン関数 ---
 function showScreen(name, pushHistory = true) {
+  // 画面を離れる前に、一覧画面のスクロール位置を保存
+  const prevKey = getScrollKey(currentScreen);
+  if (prevKey) {
+    scrollPositions[prevKey] = document.getElementById('mainArea').scrollTop;
+  }
+
   // 画面履歴に追加（戻る操作用）
   if (pushHistory && currentScreen !== name) {
     screenHistory.push(currentScreen);
@@ -1936,7 +1971,7 @@ function showScreen(name, pushHistory = true) {
   // ドロップダウンを閉じる
   closeAllDropdowns();
 
-// 画面ごとの個別設定
+  // 画面ごとの個別設定
   switch (name) {
     case 'brand':
       document.getElementById('screenBrand').classList.add('active');
@@ -2018,7 +2053,8 @@ function showScreen(name, pushHistory = true) {
       detailEditBtn.onclick = editMemo;
       detailDeleteBtn.style.display = 'inline-block';
       detailDeleteBtn.onclick = confirmDeleteMemo;
-      title.textContent = 'メモ詳細';
+      // ヘッダーにはメモのタイトルを表示（allMemosから同期的に取得）
+      title.textContent = getMemoTitle(currentMemoId);
       title.classList.remove('logo-font');
       renderMemoDetail();
       break;
@@ -2046,8 +2082,15 @@ function showScreen(name, pushHistory = true) {
       break;
   }
 
-  // スクロール位置をリセット
-  document.getElementById('mainArea').scrollTop = 0;
+  // スクロール位置を復元または先頭にリセット
+  const newKey = getScrollKey(name);
+  if (newKey && !pushHistory && scrollPositions[newKey] > 0) {
+    // 戻る操作で一覧画面に戻った場合 → 保存位置を復元
+    restoreScrollPosition(scrollPositions[newKey]);
+  } else {
+    // それ以外（新規に前進する場合や詳細画面など） → 先頭にリセット
+    document.getElementById('mainArea').scrollTop = 0;
+  }
 }
 
 // --- 戻る操作 ---
@@ -2074,7 +2117,8 @@ async function goBack() {
 }
 
 // --- ブラウザの戻るボタン対応（popstateイベント） ---
-let exitPending = false;
+let exitConfirmed = false; // 終了確認ダイアログでOKが押された時のフラグ
+
 window.addEventListener('popstate', (e) => {
   // closeLightbox()のhistory.back()で発火した場合はスキップ
   if (lightboxClosing) {
@@ -2118,18 +2162,18 @@ window.addEventListener('popstate', (e) => {
     return;
   }
 
-  // トップ画面にいる場合 → 終了確認
+  // トップ画面にいる場合 → 終了確認ダイアログ
   const isTop = (currentTab === 'card' && currentScreen === 'brand') ||
                 (currentTab === 'memo' && currentScreen === 'memo');
   if (isTop) {
-    if (exitPending) {
-      return; // 2回目 → ブラウザに任せる（実際に戻る）
+    if (exitConfirmed) {
+      // OK押下後 → フラグを戻してそのまま終了
+      exitConfirmed = false;
+      return;
     }
-    // 1回目 → 警告を出して履歴を足し直す
-    exitPending = true;
+    // 通常 → 履歴を足し直してダイアログを表示
     history.pushState({ screen: currentScreen }, '');
-    toast('もう一度戻るとアプリを終了します');
-    setTimeout(() => { exitPending = false; }, 3000);
+    showExitDialog();
     return;
   }
 
@@ -2137,6 +2181,23 @@ window.addEventListener('popstate', (e) => {
   isPopState = true;
   goBack().then(() => { isPopState = false; });
 });
+
+// --- 終了確認ダイアログを表示 ---
+function showExitDialog() {
+  showModal({
+    title: 'アプリを終了',
+    content: 'PEGコスメを終了しますか？',
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: 'OK', cls: 'modal-ok', action: () => {
+          exitConfirmed = true;
+          closeModal();
+          history.back();
+        }
+      }
+    ]
+  });
+}
 
 // --- タブ切替（カード ↔ メモ） ---
 function switchTab(tab) {
@@ -2155,7 +2216,7 @@ function switchTab(tab) {
   }
 }
 
-// --- スワイプでタブ切替（トップ画面のみ） ---
+// --- スワイプでタブ切替（トップ画面 + ブランドフォルダ内） ---
 {
   let swipeStartX = 0;
   let swipeStartY = 0;
@@ -2170,10 +2231,16 @@ function switchTab(tab) {
   }, { passive: true });
 
   mainArea.addEventListener('touchend', (e) => {
-    // トップ画面（brand or memo）以外では無効
-    const isTop = (currentTab === 'card' && currentScreen === 'brand') ||
-                  (currentTab === 'memo' && currentScreen === 'memo');
-    if (!isTop) return;
+    // 並べ替えモード中はスワイプ無効（誤動作防止）
+    if (isSortMode) return;
+
+    // タブ切替スワイプを許可する画面：
+    //   - ブランド一覧（brand）、ブランドフォルダ内（products）… カードタブ
+    //   - メモ一覧（memo）                                      … メモタブ
+    const canTabSwipe =
+      (currentTab === 'card' && (currentScreen === 'brand' || currentScreen === 'products')) ||
+      (currentTab === 'memo' && currentScreen === 'memo');
+    if (!canTabSwipe) return;
 
     const dx = e.changedTouches[0].clientX - swipeStartX;
     const dy = e.changedTouches[0].clientY - swipeStartY;
@@ -3783,7 +3850,7 @@ function removeFormImage(e, index) {
   renderFormImageGrid();
 }
 
-// --- 商品フォームの自動保存（戻るボタン時） ---
+// --- 商品フォームの自動保存（戻るボタン時・アプリ終了時） ---
 async function autoSaveProduct() {
   const name = document.getElementById('formName').value.trim();
   if (!name) return; // 商品名が空なら保存しない
@@ -3792,8 +3859,11 @@ async function autoSaveProduct() {
   const priceRaw = document.getElementById('formPrice').value.trim();
   const priceNum = parseInt(priceRaw.replace(/[^0-9]/g, ''), 10) || 0;
 
+  const productId = editingProductId || genId();
+  const wasEditing = !!editingProductId;
+
   const data = {
-    id: editingProductId || genId(),
+    id: productId,
     brandId,
     name,
     categoryMakeup: document.getElementById('formCategoryMakeup').value,
@@ -3806,16 +3876,18 @@ async function autoSaveProduct() {
     memo: document.getElementById('formMemo').value.trim(),
     image: formImages[0] || null,
     images: formImages.length > 0 ? [...formImages] : [],
-    createdAt: editingProductId
-      ? (await dbGet('products', editingProductId))?.createdAt || new Date().toISOString()
+    createdAt: wasEditing
+      ? (await dbGet('products', productId))?.createdAt || new Date().toISOString()
       : new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
 
   await dbPut('products', data);
   await markDataUpdated();
-  toast(editingProductId ? '商品を更新しました' : '商品を登録しました');
-  editingProductId = null;
+  toast(wasEditing ? '商品を更新しました' : '商品を登録しました');
+
+  // 保存したIDを保持（バックグラウンド復帰後の連続保存で重複作成を防ぐ）
+  editingProductId = productId;
 }
 
 // --- 商品をDBに保存（新規登録 or 更新） ---
@@ -3947,15 +4019,17 @@ function formatIngredients() {
 let memoFormOriginalTitle = '';
 let memoFormOriginalBody = '';
 
-// --- メモ一覧を描画 ---
-async function renderMemos() {
-  await loadAllData();
-  const query = document.getElementById('searchInput').value.trim().toLowerCase();
-  const rawQuery = document.getElementById('searchInput').value.trim();
-  const list = document.getElementById('memoList');
-  const empty = document.getElementById('memoEmpty');
+// --- メモIDからタイトルを取得（ヘッダー表示用） ---
+function getMemoTitle(id) {
+  const m = allMemos.find(mm => mm.id === id);
+  return (m && m.title) ? m.title : 'メモ詳細';
+}
 
+// --- 検索・ソート済みのメモ一覧を取得（一覧描画とスワイプ遷移で共用） ---
+function getFilteredSortedMemos() {
+  const query = document.getElementById('searchInput').value.trim().toLowerCase();
   let memos = allMemos;
+
   // 検索フィルタ
   if (query) {
     memos = memos.filter(m => {
@@ -3964,7 +4038,7 @@ async function renderMemos() {
     });
   }
 
-  // --- ソート適用 ---
+  // ソート適用
   const [sortField, sortOrder] = currentMemoSort.split('_');
   const dir = sortOrder === 'asc' ? 1 : -1;
   memos = memos.slice().sort((a, b) => {
@@ -3977,6 +4051,18 @@ async function renderMemos() {
     const vb = b.updatedAt || b.createdAt || '';
     return va.localeCompare(vb, 'ja') * dir;
   });
+
+  return memos;
+}
+
+// --- メモ一覧を描画 ---
+async function renderMemos() {
+  await loadAllData();
+  const rawQuery = document.getElementById('searchInput').value.trim();
+  const list = document.getElementById('memoList');
+  const empty = document.getElementById('memoEmpty');
+
+  const memos = getFilteredSortedMemos();
 
   // 0件時の表示
   if (memos.length === 0) {
@@ -4009,8 +4095,18 @@ function openMemoDetail(id) {
 
 // --- メモ詳細画面を描画 ---
 async function renderMemoDetail() {
-  const m = await dbGet('memos', currentMemoId);
+  // メモ一覧を最新化（スワイプ遷移や編集直後のデータ整合性のため）
+  allMemos = await dbGetAll('memos');
+  allMemos.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+  const m = allMemos.find(mm => mm.id === currentMemoId);
   if (!m) return;
+
+  // ヘッダーにメモタイトルを表示
+  const headerTitle = document.getElementById('headerTitle');
+  headerTitle.textContent = m.title || 'メモ詳細';
+  headerTitle.classList.remove('logo-font');
+
   const rawQuery = document.getElementById('searchInput').value.trim();
   const date = m.updatedAt
     ? new Date(m.updatedAt).toLocaleDateString('ja-JP')
@@ -4052,33 +4148,39 @@ function openMemoForm(memoId) {
   showScreen('memoForm');
 }
 
-// --- メモの自動保存（戻る操作時に呼ばれる） ---
+// --- メモの自動保存（戻るボタン時・アプリ終了時） ---
 async function autoSaveMemo() {
   const title = document.getElementById('memoFormTitle').value.trim();
   if (!title) return; // タイトルが空なら保存しない
 
   const body = document.getElementById('memoFormBody').value.trim();
 
-  // 内容に変更がなければ保存しない
+  // 内容に変更がなければ保存しない（editingMemoIdは保持）
   if (title === memoFormOriginalTitle.trim() && body === memoFormOriginalBody.trim()) {
-    editingMemoId = null;
     return;
   }
 
+  const memoId = editingMemoId || genId();
+  const wasEditing = !!editingMemoId;
+
   const data = {
-    id: editingMemoId || genId(),
+    id: memoId,
     title,
     body,
-    createdAt: editingMemoId
-      ? (await dbGet('memos', editingMemoId))?.createdAt || new Date().toISOString()
+    createdAt: wasEditing
+      ? (await dbGet('memos', memoId))?.createdAt || new Date().toISOString()
       : new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
 
   await dbPut('memos', data);
   await markDataUpdated();
-  toast(editingMemoId ? 'メモを更新しました' : 'メモを登録しました');
-  editingMemoId = null;
+  toast(wasEditing ? 'メモを更新しました' : 'メモを登録しました');
+
+  // 次回以降のオートセーブに備えて状態を更新
+  editingMemoId = memoId;
+  memoFormOriginalTitle = title;
+  memoFormOriginalBody = body;
 }
 
 // --- メモをDBに保存（新規登録 or 更新） ---
@@ -4138,6 +4240,64 @@ async function deleteMemo() {
   closeModal();
   toast('メモを削除しました');
   goBack();
+}
+
+// --- メモ詳細画面でのスワイプで前後のメモに遷移 ---
+{
+  let memoSwipeStartX = 0;
+  let memoSwipeStartY = 0;
+  let memoSwipeStartTime = 0;
+  const mainArea = document.getElementById('mainArea');
+
+  mainArea.addEventListener('touchstart', (e) => {
+    if (currentScreen !== 'memoDetail') return;
+    if (e.touches.length !== 1) return;
+    memoSwipeStartX = e.touches[0].clientX;
+    memoSwipeStartY = e.touches[0].clientY;
+    memoSwipeStartTime = Date.now();
+  }, { passive: true });
+
+  mainArea.addEventListener('touchend', (e) => {
+    if (currentScreen !== 'memoDetail') return;
+
+    const dx = e.changedTouches[0].clientX - memoSwipeStartX;
+    const dy = e.changedTouches[0].clientY - memoSwipeStartY;
+    const dt = Date.now() - memoSwipeStartTime;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    // 横方向に十分な距離・速度で、かつ縦方向より大きいスワイプ
+    if (absDx > 70 && absDx > absDy * 1.5 && dt < 400) {
+      const memos = getFilteredSortedMemos();
+      const idx = memos.findIndex(m => m.id === currentMemoId);
+      if (idx === -1) return;
+
+      if (dx < 0) {
+        // 左スワイプ → 次のメモ（リスト下方向）
+        if (idx < memos.length - 1) {
+          const next = memos[idx + 1];
+          currentMemoId = next.id;
+          // タイトルを即座に更新（描画遅延によるチラつき防止）
+          document.getElementById('headerTitle').textContent = next.title || 'メモ詳細';
+          renderMemoDetail();
+          document.getElementById('mainArea').scrollTop = 0;
+        } else {
+          toast('最後のメモです');
+        }
+      } else {
+        // 右スワイプ → 前のメモ（リスト上方向）
+        if (idx > 0) {
+          const prev = memos[idx - 1];
+          currentMemoId = prev.id;
+          document.getElementById('headerTitle').textContent = prev.title || 'メモ詳細';
+          renderMemoDetail();
+          document.getElementById('mainArea').scrollTop = 0;
+        } else {
+          toast('最初のメモです');
+        }
+      }
+    }
+  }, { passive: true });
 }
 
 
@@ -4925,6 +5085,16 @@ async function migrateProductImages() {
   await dbPut('meta', { key: 'migratedToImagesArray', value: true });
 }
 
+// --- アプリ非表示・終了時にフォーム内容を自動保存 ---
+async function onAppHiding() {
+  if (formSubmitted) return;
+  if (currentScreen === 'form') {
+    await autoSaveProduct();
+  } else if (currentScreen === 'memoForm') {
+    await autoSaveMemo();
+  }
+}
+
 // --- アプリ起動時の処理 ---
 (async function init() {
   await openDB();
@@ -4978,13 +5148,23 @@ async function migrateProductImages() {
     });
   }
 
+  // --- アプリ非表示・終了時の自動保存リスナー ---
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      onAppHiding();
+    }
+  });
+  window.addEventListener('pagehide', () => {
+    onAppHiding();
+  });
+
   // 初期状態をブラウザ履歴に設定
   history.replaceState({ screen: 'brand' }, '');
   showScreen('brand', false);
 })();
 
-
 </script>
+
 
 <!-- PWA インストールボタン -->
 <button id="btnInstall" style="
