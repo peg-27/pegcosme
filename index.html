@@ -61,7 +61,7 @@
   --primary-lighter: #f1f4f9;
   --primary-dark: #6b82b0;
   --primary-pale: #b8c6e0;
-  --accent: #d4868b;
+  --accent: #DEA6C4;
   --accent-light: #faf0f0;
   --text: #3d3f50;
   --text-light: #7a7e92;
@@ -154,6 +154,12 @@ img { display: block; max-width: 100%; }
   color: #fff;
   position: fixed; top: 0; left: 0; right: 0;
   z-index: 100;
+  transition: background 0.2s ease;
+}
+
+/* --- 検索モード時のヘッダー（ピンクのナビバー） --- */
+.header.search-mode {
+  background: var(--accent);
 }
 
 /* --- 戻るボタン（初期非表示、画面遷移時にJS制御） --- */
@@ -167,8 +173,14 @@ img { display: block; max-width: 100%; }
 
 /* --- ヘッダータイトル（画面名を動的に変更） --- */
 .header-title {
-  flex: 1; font-size: 17px; font-weight: 600;
+  flex: 1; min-width: 0;
+  font-size: 15px; font-weight: 600;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  padding-right: 8px;
+}
+/* --- 中央バッジを使う画面では、タイトル右側にバッジ用の余白を確保 --- */
+.header.title-with-center-count .header-title {
+  padding-right: 70px;
 }
 
 /* --- ヘッダー右側のアイコンボタン --- */
@@ -191,6 +203,9 @@ img { display: block; max-width: 100%; }
   border-radius: 50%;
   border: 1.5px solid var(--primary);
 }
+.header.search-mode .header-btn.has-filter::after {
+  border-color: var(--accent);
+}
 
 /* --- ヘッダー内テキストボタン（詳細画面の編集・削除用） --- */
 .header-text-btn {
@@ -201,10 +216,10 @@ img { display: block; max-width: 100%; }
   white-space: nowrap;
 }
 .header-text-btn:active { background: rgba(255,255,255,0.15); }
-.header-text-btn-danger { color: #ffb0b0; }
+.header-text-btn-danger { color: #ffe0e0; }
 .header-text-btn-danger:active { background: rgba(255,100,100,0.15); }
 
-/* --- ヘッダー中央の登録件数バッジ --- */
+/* --- ヘッダー中央の件数バッジ（登録件数／検索件数共用） --- */
 .header-total-count {
   position: absolute;
   left: 50%; top: 50%;
@@ -213,6 +228,13 @@ img { display: block; max-width: 100%; }
   color: rgba(255,255,255,0.85);
   pointer-events: none;
   display: none;
+}
+
+/* --- タイトル内インライン件数（ブランドフォルダ内用） --- */
+.header-title-count {
+  font-size: 13px; font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  margin-left: 4px;
 }
 
 /* --- ドロップダウン共通 --- */
@@ -344,21 +366,29 @@ img { display: block; max-width: 100%; }
 
 <!-- ----- #HEADER HTML ----- -->
 
-<!-- ヘッダー：戻るボタン、タイトル、ソート、フィルター、設定ボタン -->
+<!-- ヘッダー：戻るボタン、検索ボタン、検索解除ボタン、タイトル、件数、フィルター、ソート、設定 -->
 <div class="header">
   <button class="header-back" id="btnBack" onclick="goBack()">
     <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
   </button>
-  <div class="header-title" id="headerTitle">PEG COSME</div>
-  <!-- 登録件数バッジ（トップ画面のみ表示） -->
-  <span class="header-total-count" id="headerTotalCount"></span>
-  <!-- ソートボタン -->
-  <button class="header-btn" id="btnSort" onclick="toggleSortDropdown()" title="並び替え" style="display:none">
-    <svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
+  <!-- 検索ボタン（トップ画面・メモ画面で表示） -->
+  <button class="header-btn" id="btnSearch" onclick="toggleSearchMode()" title="検索" style="display:none">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
   </button>
+  <!-- 検索モード解除ボタン（検索モード中のみ表示） -->
+  <button class="header-back" id="btnSearchClose" onclick="closeSearchMode()" title="検索を閉じる">
+    <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <div class="header-title" id="headerTitle"></div>
+  <!-- 件数バッジ（登録件数／フィルター件数共用） -->
+  <span class="header-total-count" id="headerTotalCount"></span>
   <!-- カテゴリフィルターボタン -->
   <button class="header-btn" id="btnFilter" onclick="toggleFilterDropdown()" title="カテゴリ" style="display:none">
     <svg viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+  </button>
+  <!-- ソートボタン -->
+  <button class="header-btn" id="btnSort" onclick="toggleSortDropdown()" title="並び替え" style="display:none">
+    <svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
   </button>
   <!-- 詳細画面用：編集・削除ボタン -->
   <button class="header-text-btn header-text-btn-danger" id="btnDetailDelete" onclick="confirmDeleteProduct()" style="display:none">削除</button>
@@ -416,10 +446,14 @@ img { display: block; max-width: 100%; }
      #SEARCH 検索バー（CSS）
      ══════════════════════════════════════════ -->
 <style>
-/* --- 検索バー外枠 --- */
+/* --- 検索バー外枠（デフォルト非表示） --- */
 .search-bar {
   padding: 10px 12px 6px;
   background: var(--bg);
+  display: none;
+}
+.search-bar.active {
+  display: block;
 }
 
 /* --- 検索入力欄のラッパー --- */
@@ -433,11 +467,20 @@ img { display: block; max-width: 100%; }
 }
 .search-wrap svg { width: 18px; height: 18px; stroke: var(--text-lighter); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
 .search-wrap input {
-  flex: 1; border: none; outline: none;
+  flex: 1; min-width: 0; border: none; outline: none;
   background: none; height: 100%;
   font-size: 14px; color: var(--text);
 }
 .search-wrap input::placeholder { color: var(--text-lighter); }
+
+/* --- 検索ヒット件数表示（検索バー内、×ボタンの左） --- */
+.search-hit-count {
+  display: none;
+  font-size: 12px;
+  color: var(--text-light);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 
 /* --- クリアボタン（入力時のみ表示） --- */
 .search-clear {
@@ -447,6 +490,44 @@ img { display: block; max-width: 100%; }
 }
 .search-clear.show { display: flex; }
 .search-clear svg { width: 16px; height: 16px; stroke: var(--text-lighter); }
+
+/* --- カテゴリフィルター適用中の通知バー --- */
+.filter-bar {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--accent-light);
+  border-bottom: 1px solid var(--border-light);
+  font-size: 13px;
+  color: var(--text);
+}
+.filter-bar.active {
+  display: flex;
+}
+.filter-bar-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.filter-bar-text strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+.filter-bar-close {
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.filter-bar-close svg {
+  width: 14px; height: 14px;
+  stroke: var(--text-light);
+  fill: none; stroke-width: 2.4;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.filter-bar-close:active { background: rgba(0,0,0,0.05); }
 
 /* --- 検索ハイライト --- */
 mark.hl {
@@ -464,11 +545,21 @@ mark.hl {
 <div class="search-bar" id="searchBar">
   <div class="search-wrap">
     <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input type="text" id="searchInput" placeholder="検索..." oninput="onSearch()">
+    <input type="text" id="searchInput" placeholder="検索..." oninput="onSearch()"
+           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <span class="search-hit-count" id="searchTotalCount"></span>
     <button class="search-clear" id="searchClear" onclick="clearSearch()">
       <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
+</div>
+
+<!-- カテゴリフィルター適用中の通知バー -->
+<div class="filter-bar" id="filterBar">
+  <span class="filter-bar-text"><strong id="filterBarLabel"></strong>で絞り込み中</span>
+  <button class="filter-bar-close" onclick="applyCategoryFilter(null)" title="フィルター解除">
+    <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
 </div>
 
 
@@ -1841,6 +1932,7 @@ let editingMemoId = null;       // 編集中のメモID（新規時はnull）
 let formImages = [];            // フォームで選択された画像のBase64データ配列（最大3枚）
 
 let isPopState = false;         // popstateイベント処理中フラグ
+let searchOpenedAtDetail = false; // 検索モードを詳細画面で開始したか（戻る時の挙動制御用）
 
 // --- スクロール位置保存用 ---
 let scrollPositions = {};       // 一覧画面ごとのスクロール位置を保存
@@ -1915,11 +2007,31 @@ function showScreen(name, pushHistory = true) {
   }
   currentScreen = name;
 
+  // 画面遷移時：検索モードのヘッダー状態をリセット（ヘッダー背景色・検索バー・モード用ボタン）
+  // ※ searchInput.value は一覧画面に「前進」する時のみクリア（戻る時は保持して検索モードを復元する）
+  const headerEl = document.querySelector('.header');
+  if (headerEl.classList.contains('search-mode')) {
+    headerEl.classList.remove('search-mode');
+    document.getElementById('searchBar').classList.remove('active');
+    document.getElementById('btnSearchClose').style.display = 'none';
+    document.getElementById('searchTotalCount').style.display = 'none';
+  }
+  // 一覧画面に「前進」する時のみ検索クエリをクリア
+  if (pushHistory && (name === 'brand' || name === 'products' || name === 'memo')) {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('searchClear').classList.remove('show');
+  }
+
+  // 中央バッジ用の余白クラスをいったん外す（各画面のcaseで必要に応じて再付与）
+  headerEl.classList.remove('title-with-center-count');
+
   // 全画面を非表示にしてから対象だけ表示
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
 
   // UI要素の参照
   const backBtn = document.getElementById('btnBack');
+  const searchBtn = document.getElementById('btnSearch');
+  const searchCloseBtn = document.getElementById('btnSearchClose');
   const tabBar = document.getElementById('tabBar');
   const searchBar = document.getElementById('searchBar');
   const fab = document.getElementById('fab');
@@ -1934,11 +2046,14 @@ function showScreen(name, pushHistory = true) {
   const sortConfirmBtn = document.getElementById('btnSortConfirm');
   const sortCancelBtn = document.getElementById('btnSortCancel');
   const totalCount = document.getElementById('headerTotalCount');
+  const searchCount = document.getElementById('searchTotalCount');
+  const filterBar = document.getElementById('filterBar');
 
   // デフォルト表示状態（一覧画面向け）
   backBtn.style.display = 'none';
+  searchBtn.style.display = 'none';
+  searchCloseBtn.style.display = 'none';
   tabBar.style.display = 'flex';
-  searchBar.style.display = 'block';
   fab.style.display = 'flex';
   settingsBtn.style.display = 'flex';
   sortBtn.style.display = 'none';
@@ -1950,18 +2065,30 @@ function showScreen(name, pushHistory = true) {
   if (sortConfirmBtn) sortConfirmBtn.style.display = 'none';
   if (sortCancelBtn) sortCancelBtn.style.display = 'none';
   totalCount.style.display = 'none';
+  searchCount.style.display = 'none';
 
   // ドロップダウンを閉じる
   closeAllDropdowns();
+
+  // フィルターバー：一覧画面（brand/products）でフィルター適用中のみ表示
+  if ((name === 'brand' || name === 'products') && currentCategoryFilter) {
+    updateFilterBar();
+    filterBar.classList.add('active');
+  } else {
+    filterBar.classList.remove('active');
+  }
 
   // 画面ごとの個別設定
   switch (name) {
     case 'brand':
       document.getElementById('screenBrand').classList.add('active');
-      title.textContent = 'PEG COSME';
+      title.textContent = '';
+      searchBtn.style.display = 'flex';
       sortBtn.style.display = 'flex';
       filterBtn.style.display = 'flex';
       totalCount.style.display = 'block';
+      // 中央バッジを使うので、タイトル側に余白を確保
+      headerEl.classList.add('title-with-center-count');
       // ブランド一覧画面では「並べ替え順」は無効なので、デフォルトに戻す
       if (currentSort === 'custom') {
         currentSort = 'createdAt_desc';
@@ -1970,32 +2097,36 @@ function showScreen(name, pushHistory = true) {
       break;
     case 'products':
       document.getElementById('screenProducts').classList.add('active');
-      backBtn.style.display = 'flex';
-      title.textContent = getBrandName(currentBrandId);
+      // backBtnは非表示、searchBtnを表示（ヘッダー左端を全画面で統一）
+      searchBtn.style.display = 'flex';
+      // タイトルはrenderProducts内で「ブランド名 (○件)」の形にセットするため、ここでは仮で空
+      title.textContent = '';
       sortBtn.style.display = 'flex';
       filterBtn.style.display = 'flex';
+      // 中央の件数バッジは使わない（タイトルに件数を含めるため）
+      // ※ totalCount.style.display は既に 'none' のまま
       shouldResetSortForBrand = true;
       renderProducts();
       break;
     case 'detail':
       document.getElementById('screenDetail').classList.add('active');
-      backBtn.style.display = 'flex';
+      // backBtnは非表示、searchBtnを表示（成分検索などができるように）
+      searchBtn.style.display = 'flex';
       tabBar.style.display = 'none';
-      searchBar.style.display = 'none';
       fab.style.display = 'none';
       settingsBtn.style.display = 'none';
       detailEditBtn.style.display = 'inline-block';
       detailEditBtn.onclick = editProduct;
       detailDeleteBtn.style.display = 'inline-block';
       detailDeleteBtn.onclick = confirmDeleteProduct;
-      title.textContent = '商品詳細';
+      // タイトルは renderDetail() 内で商品名に設定するため、ここでは仮で空にしておく
+      title.textContent = '';
       renderDetail();
       break;
     case 'form':
       document.getElementById('screenForm').classList.add('active');
       backBtn.style.display = 'flex';
       tabBar.style.display = 'none';
-      searchBar.style.display = 'none';
       fab.style.display = 'none';
       settingsBtn.style.display = 'none';
       formSaveBtn.style.display = 'inline-block';
@@ -2004,15 +2135,18 @@ function showScreen(name, pushHistory = true) {
       break;
     case 'memo':
       document.getElementById('screenMemo').classList.add('active');
-      title.textContent = 'PEG COSME';
+      title.textContent = '';
+      searchBtn.style.display = 'flex';
       sortBtn.style.display = 'flex';
+      totalCount.style.display = 'block';
+      // 中央バッジを使うので、タイトル側に余白を確保
+      headerEl.classList.add('title-with-center-count');
       renderMemos();
       break;
     case 'memoForm':
       document.getElementById('screenMemoForm').classList.add('active');
       backBtn.style.display = 'flex';
       tabBar.style.display = 'none';
-      searchBar.style.display = 'none';
       fab.style.display = 'none';
       settingsBtn.style.display = 'none';
       memoSaveBtn.style.display = 'inline-block';
@@ -2021,9 +2155,9 @@ function showScreen(name, pushHistory = true) {
       break;
     case 'memoDetail':
       document.getElementById('screenMemoDetail').classList.add('active');
-      backBtn.style.display = 'flex';
+      // backBtnは非表示、searchBtnを表示（メモ内検索ができるように）
+      searchBtn.style.display = 'flex';
       tabBar.style.display = 'none';
-      searchBar.style.display = 'none';
       fab.style.display = 'none';
       settingsBtn.style.display = 'none';
       detailEditBtn.style.display = 'inline-block';
@@ -2037,7 +2171,6 @@ function showScreen(name, pushHistory = true) {
       document.getElementById('screenCategoryManage').classList.add('active');
       backBtn.style.display = 'flex';
       tabBar.style.display = 'none';
-      searchBar.style.display = 'none';
       fab.style.display = 'none';
       settingsBtn.style.display = 'none';
       title.textContent = 'カテゴリ管理';
@@ -2047,7 +2180,6 @@ function showScreen(name, pushHistory = true) {
       document.getElementById('screenBrandManage').classList.add('active');
       backBtn.style.display = 'flex';
       tabBar.style.display = 'none';
-      searchBar.style.display = 'none';
       fab.style.display = 'none';
       settingsBtn.style.display = 'none';
       title.textContent = 'ブランド管理';
@@ -2063,6 +2195,19 @@ function showScreen(name, pushHistory = true) {
   } else {
     // それ以外（新規に前進する場合や詳細画面など） → 先頭にリセット
     document.getElementById('mainArea').scrollTop = 0;
+  }
+
+  // 戻る操作で一覧画面に戻ってきた時の検索モード制御
+  if (!pushHistory && (name === 'brand' || name === 'products' || name === 'memo')) {
+    if (searchOpenedAtDetail) {
+      // 詳細画面で開始した検索 → 一覧画面に戻ったらクエリをクリアして検索モードを完全解除
+      document.getElementById('searchInput').value = '';
+      document.getElementById('searchClear').classList.remove('show');
+      searchOpenedAtDetail = false;
+    } else if (document.getElementById('searchInput').value.trim() !== '') {
+      // 一覧画面で開始した検索 → 検索モードを復元
+      openSearchMode(false);
+    }
   }
 }
 
@@ -2131,6 +2276,24 @@ window.addEventListener('popstate', (e) => {
   // 並べ替えモード中 → モードをキャンセルするだけで画面は動かさない
   if (isSortMode) {
     cancelSortMode();
+    history.pushState({ screen: currentScreen }, '');
+    return;
+  }
+
+  // 一覧画面かどうか（brand/products/memo）
+  const isListScreen = currentScreen === 'brand' || currentScreen === 'products' || currentScreen === 'memo';
+  const headerEl = document.querySelector('.header');
+
+  // 一覧画面で検索モード中 → 検索モードのみ解除
+  if (isListScreen && headerEl.classList.contains('search-mode')) {
+    closeSearchMode();
+    history.pushState({ screen: currentScreen }, '');
+    return;
+  }
+
+  // 一覧画面でフィルター適用中 → フィルターのみ解除
+  if (isListScreen && currentCategoryFilter !== null) {
+    applyCategoryFilter(null);
     history.pushState({ screen: currentScreen }, '');
     return;
   }
@@ -2284,12 +2447,7 @@ function toggleFilterDropdown() {
   const isOpen = dd.classList.contains('show');
   closeAllDropdowns();
 
-  // フィルター適用中かつドロップダウンが閉じている → フィルター解除のみ
-  if (!isOpen && currentCategoryFilter !== null) {
-    applyCategoryFilter(null);
-    return;
-  }
-
+  // フィルター適用中でも、ボタンを押せば常にパネルを開く
   if (!isOpen) {
     renderFilterDropdown();
     dd.classList.add('show');
@@ -2417,18 +2575,45 @@ function applySort(sortKey) {
 
 // --- カテゴリフィルターを適用 ---
 function applyCategoryFilter(categoryName) {
+  // 新規にフィルター適用する場合のみ履歴に追加（戻るボタンで解除できるように）
+  if (categoryName !== null && currentCategoryFilter === null) {
+    history.pushState({ screen: currentScreen, filter: true }, '');
+  }
+
   currentCategoryFilter = categoryName;
   closeAllDropdowns();
-  // フィルターボタンにインジケーター表示
+
+  // フィルターボタンのインジケーターと件数バッジ・フィルターバー表示の制御
   const btn = document.getElementById('btnFilter');
+  const totalCount = document.getElementById('headerTotalCount');
+  const filterBar = document.getElementById('filterBar');
+
   if (categoryName) {
     btn.classList.add('has-filter');
+    totalCount.style.display = 'block';
+    // フィルターバーを表示
+    updateFilterBar();
+    filterBar.classList.add('active');
   } else {
     btn.classList.remove('has-filter');
+    // 解除後は画面に応じて件数バッジ表示を切り替え（brand画面とmemo画面のみ表示）
+    totalCount.style.display = (currentScreen === 'brand' || currentScreen === 'memo') ? 'block' : 'none';
+    // フィルターバーを非表示
+    filterBar.classList.remove('active');
   }
+
   // 現在の画面を再描画
   if (currentScreen === 'brand') renderBrands();
   else if (currentScreen === 'products') renderProducts();
+}
+
+// --- フィルターバーのラベルを更新 ---
+function updateFilterBar() {
+  const label = document.getElementById('filterBarLabel');
+  let labelText = currentCategoryFilter;
+  if (currentCategoryFilter === 'group:skincare') labelText = 'スキンケア';
+  else if (currentCategoryFilter === 'group:makeup') labelText = 'メイク';
+  label.textContent = `「${labelText}」`;
 }
 
 // --- 商品配列にソートを適用するヘルパー ---
@@ -2492,7 +2677,7 @@ async function loadAllData() {
 // --- ブランド一覧を描画 ---
 async function renderBrands() {
   await loadAllData();
-  // ヘッダーに登録アイテム総数を表示
+  // ヘッダーに登録アイテム総数を表示（フィルター中は後でフィルター件数に上書き）
   document.getElementById('headerTotalCount').textContent = allProducts.length + '件';
 
   const query = document.getElementById('searchInput').value.trim().toLowerCase();
@@ -2500,17 +2685,21 @@ async function renderBrands() {
   const list = document.getElementById('brandList');
   const empty = document.getElementById('brandEmpty');
 
-  // === カテゴリフィルター中：ブランドをまたいで商品カードを直接表示 ===
-  if (currentCategoryFilter) {
-    let products;
-    if (currentCategoryFilter === 'group:skincare') {
-      products = allProducts.filter(p => p.categorySkincare);
-    } else if (currentCategoryFilter === 'group:makeup') {
-      products = allProducts.filter(p => p.categoryMakeup);
-    } else {
-      products = allProducts.filter(p =>
-        p.categoryMakeup === currentCategoryFilter || p.categorySkincare === currentCategoryFilter
-      );
+  // === カテゴリフィルター中 or 検索中：商品カードを直接表示 ===
+  if (currentCategoryFilter || query) {
+    let products = allProducts.slice();
+
+    // カテゴリフィルター
+    if (currentCategoryFilter) {
+      if (currentCategoryFilter === 'group:skincare') {
+        products = products.filter(p => p.categorySkincare);
+      } else if (currentCategoryFilter === 'group:makeup') {
+        products = products.filter(p => p.categoryMakeup);
+      } else {
+        products = products.filter(p =>
+          p.categoryMakeup === currentCategoryFilter || p.categorySkincare === currentCategoryFilter
+        );
+      }
     }
 
     // 検索フィルタ
@@ -2521,6 +2710,22 @@ async function renderBrands() {
       });
     }
 
+    // 件数バッジを更新
+    if (currentCategoryFilter) {
+      document.getElementById('headerTotalCount').textContent = products.length + '件';
+    }
+    if (query) {
+      // 検索ヒット箇所の総数（商品データ＋ブランド名）
+      const brandMap = new Map(allBrands.map(b => [b.id, b.name]));
+      const hitCount = products.reduce((sum, p) => {
+        let c = countProductHits(p, rawQuery);
+        const brandName = brandMap.get(p.brandId);
+        if (brandName) c += countHits(brandName, rawQuery);
+        return sum + c;
+      }, 0);
+      document.getElementById('searchTotalCount').textContent = hitCount + '件';
+    }
+
     // ソート
     products = sortProducts(products, currentSort);
 
@@ -2528,9 +2733,11 @@ async function renderBrands() {
     if (products.length === 0) {
       list.innerHTML = '';
       empty.style.display = 'flex';
-      empty.querySelector('p').textContent = query
-        ? '一致する商品が見つかりません'
-        : `「${currentCategoryFilter === 'group:skincare' ? 'スキンケア' : currentCategoryFilter === 'group:makeup' ? 'メイク' : currentCategoryFilter}」の商品はありません`;
+      if (query) {
+        empty.querySelector('p').textContent = '一致する商品が見つかりません';
+      } else {
+        empty.querySelector('p').textContent = `「${currentCategoryFilter === 'group:skincare' ? 'スキンケア' : currentCategoryFilter === 'group:makeup' ? 'メイク' : currentCategoryFilter}」の商品はありません`;
+      }
       return;
     }
 
@@ -2572,28 +2779,11 @@ async function renderBrands() {
     return;
   }
 
-  // === 通常表示（フィルターなし）：ブランドフォルダ一覧 ===
+  // === 通常表示（フィルターなし・検索なし）：ブランドフォルダ一覧 ===
   let brands = allBrands;
 
   // 未分類商品（brandIdがnullまたは空）を取得
   let unassigned = allProducts.filter(p => !p.brandId);
-
-  // --- 検索フィルタ ---
-  let filteredProducts = allProducts;
-  if (query) {
-    const matchBrandIds = new Set();
-    filteredProducts.forEach(p => {
-      const text = [p.name, p.categoryMakeup, p.categorySkincare, p.ingredients, p.memo, p.volume, p.price].join(' ').toLowerCase();
-      if (text.includes(query)) matchBrandIds.add(p.brandId);
-    });
-    brands = brands.filter(b =>
-      b.name.toLowerCase().includes(query) || matchBrandIds.has(b.id)
-    );
-    unassigned = unassigned.filter(p => {
-      const text = [p.name, p.categoryMakeup, p.categorySkincare, p.ingredients, p.memo, p.volume, p.price].join(' ').toLowerCase();
-      return text.includes(query);
-    });
-  }
 
   // --- ブランドのソート ---
   if (currentSort === 'name_asc') {
@@ -2603,7 +2793,7 @@ async function renderBrands() {
     const dir = order === 'asc' ? 1 : -1;
 
     const brandValue = (brandId) => {
-      const prods = filteredProducts.filter(p => p.brandId === brandId);
+      const prods = allProducts.filter(p => p.brandId === brandId);
       if (prods.length === 0) return field === 'price' ? 0 : '';
       if (field === 'price') {
         return Math.max(...prods.map(p => Number(p.price) || 0));
@@ -2629,11 +2819,7 @@ async function renderBrands() {
   if (brands.length === 0 && unassigned.length === 0) {
     list.innerHTML = '';
     empty.style.display = 'flex';
-    if (query) {
-      empty.querySelector('p').textContent = '一致するブランドが見つかりません';
-    } else {
-      empty.querySelector('p').innerHTML = 'まだ何も登録されていません<br>＋ボタンからカードを追加してください';
-    }
+    empty.querySelector('p').innerHTML = 'まだ何も登録されていません<br>＋ボタンからカードを追加してください';
     return;
   }
 
@@ -2651,7 +2837,7 @@ async function renderBrands() {
       ontouchend="cancelBrandLongPress()"
       ontouchmove="cancelBrandLongPress()">
       <div class="brand-info">
-        <div class="brand-name">${escHL(b.name, rawQuery)}</div>
+        <div class="brand-name">${esc(b.name)}</div>
         <div class="brand-count">${count}件の商品</div>
       </div>
       <svg class="brand-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
@@ -2678,8 +2864,8 @@ async function renderBrands() {
       ontouchmove="cancelLongPress()">
       <div class="product-thumb">${thumbHtml}</div>
       <div class="product-info">
-        <div class="product-name">${escHL(p.name, rawQuery)}</div>
-        ${catText ? `<div class="product-category">${escHL(catText, rawQuery)}</div>` : ''}
+        <div class="product-name">${esc(p.name)}</div>
+        ${catText ? `<div class="product-category">${esc(catText)}</div>` : ''}
         ${priceText ? `<div class="product-price">${priceText}</div>` : ''}
       </div>
     </div>`;
@@ -2869,6 +3055,17 @@ async function renderProducts() {
       const text = [p.name, p.categoryMakeup, p.categorySkincare, p.ingredients, p.memo, p.volume, p.price].join(' ').toLowerCase();
       return text.includes(query);
     });
+  }
+
+  // ヘッダータイトルに「ブランド名 (件数)」を表示
+  const brandName = getBrandName(currentBrandId);
+  document.getElementById('headerTitle').innerHTML =
+    `${esc(brandName)}<span class="header-title-count">(${products.length}件)</span>`;
+
+  // 検索モード中は検索バー内にヒット箇所の総数を表示
+  if (query) {
+    const hitCount = products.reduce((sum, p) => sum + countProductHits(p, rawQuery), 0);
+    document.getElementById('searchTotalCount').textContent = hitCount + '件';
   }
 
   // 現在ブランドの sortOrder を取得（custom ソート用）
@@ -3447,6 +3644,9 @@ async function renderDetail() {
   const p = await dbGet('products', currentProductId);
   if (!p) return;
   const rawQuery = document.getElementById('searchInput').value.trim();
+
+  // ヘッダータイトルに商品名を表示（長い場合はCSSで自動省略される）
+  document.getElementById('headerTitle').textContent = p.name || '';
 
   // 別の商品に切り替わったら画像インデックスをリセット
   if (lastRenderedProductId !== currentProductId) {
@@ -4031,11 +4231,21 @@ function getFilteredSortedMemos() {
 // --- メモ一覧を描画 ---
 async function renderMemos() {
   await loadAllData();
+
+  // ヘッダーに保存メモ総数を表示
+  document.getElementById('headerTotalCount').textContent = allMemos.length + '件';
+
   const rawQuery = document.getElementById('searchInput').value.trim();
   const list = document.getElementById('memoList');
   const empty = document.getElementById('memoEmpty');
 
   const memos = getFilteredSortedMemos();
+
+  // 検索中はヒット箇所の総数を検索バー内に表示
+  if (rawQuery) {
+    const hitCount = memos.reduce((sum, m) => sum + countMemoHits(m, rawQuery), 0);
+    document.getElementById('searchTotalCount').textContent = hitCount + '件';
+  }
 
   // 0件時の表示
   if (memos.length === 0) {
@@ -4281,6 +4491,153 @@ async function deleteMemo() {
    #SEARCH_JS 検索処理
    ══════════════════════════════════════════ */
 
+// --- ヒット数カウント用ヘルパー：テキスト内のクエリ出現回数 ---
+function countHits(text, query) {
+  if (!query || !text) return 0;
+  const lowerText = String(text).toLowerCase();
+  const lowerQuery = String(query).toLowerCase();
+  if (lowerQuery.length === 0) return 0;
+  let count = 0;
+  let pos = 0;
+  while ((pos = lowerText.indexOf(lowerQuery, pos)) !== -1) {
+    count++;
+    pos += lowerQuery.length;
+  }
+  return count;
+}
+
+// --- 1つの商品データ内のヒット箇所数を計算（全フィールド合計） ---
+function countProductHits(product, query) {
+  if (!product) return 0;
+  const fields = [
+    product.name,
+    product.categoryMakeup,
+    product.categorySkincare,
+    product.ingredients,
+    product.memo,
+    product.volume,
+    product.price
+  ];
+  return fields.reduce((sum, f) => sum + countHits(f, query), 0);
+}
+
+// --- 1つのメモデータ内のヒット箇所数を計算（タイトル＋本文） ---
+function countMemoHits(memo, query) {
+  if (!memo) return 0;
+  return countHits(memo.title, query) + countHits(memo.body, query);
+}
+
+// --- 詳細画面用：現在の対象データのヒット数を検索バー内に表示 ---
+function updateDetailHitCount() {
+  const query = document.getElementById('searchInput').value.trim();
+  if (!query) {
+    document.getElementById('searchTotalCount').textContent = '';
+    return;
+  }
+  let count = 0;
+  if (currentScreen === 'detail') {
+    const product = allProducts.find(p => p.id === currentProductId);
+    if (product) count = countProductHits(product, query);
+  } else if (currentScreen === 'memoDetail') {
+    const memo = allMemos.find(m => m.id === currentMemoId);
+    if (memo) count = countMemoHits(memo, query);
+  }
+  document.getElementById('searchTotalCount').textContent = count + '件';
+}
+
+// --- 検索モードの開閉トグル ---
+function toggleSearchMode() {
+  const header = document.querySelector('.header');
+  if (header.classList.contains('search-mode')) {
+    closeSearchMode();
+  } else {
+    openSearchMode();
+  }
+}
+
+// --- 検索モードを開く（ヘッダーをピンクのナビバーに、検索バー表示） ---
+// pushHistory: 履歴に追加するか（trueなら新規、falseなら復元）
+function openSearchMode(pushHistory = true) {
+  const header = document.querySelector('.header');
+  if (header.classList.contains('search-mode')) return;
+
+  // ヘッダーを検索ナビバーに切り替え
+  header.classList.add('search-mode');
+
+  // 検索バー表示
+  document.getElementById('searchBar').classList.add('active');
+
+  // 通常モード要素を非表示
+  document.getElementById('btnSearch').style.display = 'none';
+  document.getElementById('headerTotalCount').style.display = 'none';
+
+  // 検索モード要素を表示
+  document.getElementById('btnSearchClose').style.display = 'flex';
+  document.getElementById('searchTotalCount').style.display = 'block';
+
+  if (pushHistory) {
+    // 検索開始画面の記録：クエリが空（新規検索）の場合のみ更新する
+    const currentQuery = document.getElementById('searchInput').value.trim();
+    if (currentQuery === '') {
+      searchOpenedAtDetail = (currentScreen === 'detail' || currentScreen === 'memoDetail');
+    }
+
+    // 件数初期化、履歴push、フォーカス
+    document.getElementById('searchTotalCount').textContent = '';
+    history.pushState({ screen: currentScreen, search: true }, '');
+    setTimeout(() => {
+      document.getElementById('searchInput').focus();
+    }, 50);
+  } else {
+    // 復元の場合：詳細画面なら件数を再計算（一覧画面はrender関数側で更新される）
+    if (currentScreen === 'detail' || currentScreen === 'memoDetail') {
+      updateDetailHitCount();
+    }
+  }
+}
+
+// --- 検索モードを閉じる ---
+function closeSearchMode() {
+  const header = document.querySelector('.header');
+  if (!header.classList.contains('search-mode')) return;
+
+  // ヘッダーを通常モードに戻す
+  header.classList.remove('search-mode');
+
+  // 検索バー非表示＆クリア
+  document.getElementById('searchBar').classList.remove('active');
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').classList.remove('show');
+
+  // 検索モード要素を非表示
+  document.getElementById('btnSearchClose').style.display = 'none';
+  document.getElementById('searchTotalCount').style.display = 'none';
+
+  // 通常モード要素を画面に応じて再表示
+  if (currentScreen === 'brand' || currentScreen === 'memo') {
+    document.getElementById('btnSearch').style.display = 'flex';
+    document.getElementById('headerTotalCount').style.display = 'block';
+  } else if (currentScreen === 'products') {
+    document.getElementById('btnSearch').style.display = 'flex';
+    document.getElementById('headerTotalCount').style.display = 'block';
+  } else if (currentScreen === 'detail' || currentScreen === 'memoDetail') {
+    document.getElementById('btnSearch').style.display = 'flex';
+  }
+
+  // 検索開始画面フラグをリセット
+  searchOpenedAtDetail = false;
+
+  // 検索結果を解除して再描画（ハイライトをクリア）
+  if (currentTab === 'card') {
+    if (currentScreen === 'brand') renderBrands();
+    else if (currentScreen === 'products') renderProducts();
+    else if (currentScreen === 'detail') renderDetail();
+  } else {
+    if (currentScreen === 'memo') renderMemos();
+    else if (currentScreen === 'memoDetail') renderMemoDetail();
+  }
+}
+
 // --- 検索入力時の処理（現在の画面に応じて再描画） ---
 function onSearch() {
   const q = document.getElementById('searchInput').value;
@@ -4289,8 +4646,16 @@ function onSearch() {
   if (currentTab === 'card') {
     if (currentScreen === 'brand') renderBrands();
     else if (currentScreen === 'products') renderProducts();
+    else if (currentScreen === 'detail') {
+      renderDetail();
+      updateDetailHitCount();
+    }
   } else {
-    renderMemos();
+    if (currentScreen === 'memo') renderMemos();
+    else if (currentScreen === 'memoDetail') {
+      renderMemoDetail();
+      updateDetailHitCount();
+    }
   }
 }
 
