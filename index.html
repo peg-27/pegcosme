@@ -76,10 +76,16 @@
   --shadow-md: 0 2px 8px rgba(74, 158, 187, 0.14);
   --radius: 10px;
   --radius-sm: 6px;
-  --header-h: 50px;
+  --header-h: 44px;
+  --title-bar-h: 40px;
   --tab-h: 44px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --font: "Helvetica Neue", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+}
+
+/* --- フォーム画面ではタイトルバーを非表示にする（高さを0に潰す） --- */
+body.no-title-bar {
+  --title-bar-h: 0px;
 }
 
 /* --- ページ全体の基本設定 --- */
@@ -115,7 +121,7 @@ img { display: block; max-width: 100%; }
 .app-wrap {
   display: flex; flex-direction: column;
   height: 100%; overflow: hidden;
-  padding-top: var(--header-h);
+  padding-top: calc(var(--title-bar-h) + var(--header-h));
 }
 
 /* --- メインスクロール領域 --- */
@@ -145,6 +151,36 @@ img { display: block; max-width: 100%; }
      ══════════════════════════════════════════ -->
 <style>
 
+/* --- 上部タイトルバー（PEG COSMEロゴ表示・トップ画面リンク） --- */
+.title-bar {
+  height: var(--title-bar-h);
+  min-height: var(--title-bar-h);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary);
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding-top: 5px;  
+}
+.title-bar-link {
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 1px;
+  padding: 0 16px;
+  border-radius: 4px;
+  user-select: none;
+}
+.title-bar-link:active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
 /* --- 上部固定ヘッダー --- */
 .header {
   height: var(--header-h); min-height: var(--header-h);
@@ -152,7 +188,7 @@ img { display: block; max-width: 100%; }
   padding: 0 12px;
   background: var(--primary);
   color: #fff;
-  position: fixed; top: 0; left: 0; right: 0;
+  position: fixed; top: var(--title-bar-h); left: 0; right: 0;
   z-index: 100;
   transition: background 0.2s ease;
 }
@@ -246,7 +282,7 @@ img { display: block; max-width: 100%; }
 
 .dropdown-menu {
   position: fixed;
-  top: var(--header-h);
+  top: calc(var(--title-bar-h) + var(--header-h));
   right: 8px;
   z-index: 200;
   background: var(--card-bg);
@@ -365,6 +401,11 @@ img { display: block; max-width: 100%; }
 </style>
 
 <!-- ----- #HEADER HTML ----- -->
+
+<!-- タイトルバー：PEG COSMEロゴ。タップでブランド一覧（トップ画面）へ -->
+<div class="title-bar" id="titleBar">
+  <button class="title-bar-link" onclick="goToTop()">PEG COSME</button>
+</div>
 
 <!-- ヘッダー：戻るボタン、検索ボタン、検索解除ボタン、タイトル、件数、フィルター、ソート、設定 -->
 <div class="header">
@@ -1965,6 +2006,13 @@ const MEMO_SORT_OPTIONS = [
   { key: 'name_asc',  label: '名前順（あ→わ）' },
 ];
 
+// --- 画面名から所属タブを判定するヘルパー ---
+// （goToTopでタブをまたいだ後、戻る時に正しいタブに復帰させるため）
+function getTabForScreen(screen) {
+  const memoScreens = ['memo', 'memoDetail', 'memoForm'];
+  return memoScreens.includes(screen) ? 'memo' : 'card';
+}
+
 // --- スクロール位置のキーを取得（一覧画面のみ対象） ---
 function getScrollKey(screenName) {
   if (screenName === 'brand') return 'brand';
@@ -2006,6 +2054,13 @@ function showScreen(name, pushHistory = true) {
     }
   }
   currentScreen = name;
+
+  // タイトルバーの表示制御（フォーム画面では非表示）
+  if (name === 'form' || name === 'memoForm') {
+    document.body.classList.add('no-title-bar');
+  } else {
+    document.body.classList.remove('no-title-bar');
+  }
 
   // 画面遷移時：検索モードのヘッダー状態をリセット（ヘッダー背景色・検索バー・モード用ボタン）
   // ※ searchInput.value は一覧画面に「前進」する時のみクリア（戻る時は保持して検索モードを復元する）
@@ -2211,6 +2266,37 @@ function showScreen(name, pushHistory = true) {
   }
 }
 
+// --- タイトルバーのPEG COSMEロゴ：タップでトップ画面（ブランド一覧）へ ---
+function goToTop() {
+  const isOnTop = (currentScreen === 'brand');
+  const headerEl = document.querySelector('.header');
+  const isInSearchMode = headerEl.classList.contains('search-mode');
+  const isInFilterMode = (currentCategoryFilter !== null);
+
+  // すでにトップ画面で、検索モードもカテゴリフィルターも未適用なら何もしない
+  if (isOnTop && !isInSearchMode && !isInFilterMode) return;
+
+  // カテゴリフィルターを解除
+  currentCategoryFilter = null;
+  document.getElementById('btnFilter').classList.remove('has-filter');
+
+  // 検索モード関連のフラグをリセット
+  // （検索モード自体はshowScreen内で自動的に解除される）
+  searchOpenedAtDetail = false;
+
+  // タブをカードに切り替え（履歴は保持したまま）
+  if (currentTab !== 'card') {
+    currentTab = 'card';
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.tab === 'card');
+    });
+  }
+
+  // ブランド一覧画面に遷移
+  // ※ すでにbrandにいる場合は showScreen 内で履歴に積まれず、再描画のみ走る
+  showScreen('brand', true);
+}
+
 // --- 戻る操作 ---
 let formSubmitted = false; // submitProduct/submitMemoで保存済みフラグ
 
@@ -2226,6 +2312,17 @@ async function goBack() {
   formSubmitted = false;
   if (screenHistory.length > 0) {
     const prev = screenHistory.pop();
+
+    // 戻り先の画面が別タブの画面なら、タブも切り替える
+    // （goToTopでタブをまたいだ後、戻る時に正しいタブに復帰させる）
+    const targetTab = getTabForScreen(prev);
+    if (targetTab !== currentTab) {
+      currentTab = targetTab;
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === targetTab);
+      });
+    }
+
     showScreen(prev, false);
   } else {
     // トップ画面にいるとき → 何もしない
@@ -2588,16 +2685,18 @@ function applyCategoryFilter(categoryName) {
   const totalCount = document.getElementById('headerTotalCount');
   const filterBar = document.getElementById('filterBar');
 
+  const useCenterBadge = (currentScreen === 'brand' || currentScreen === 'memo');
+
   if (categoryName) {
     btn.classList.add('has-filter');
-    totalCount.style.display = 'block';
+    totalCount.style.display = useCenterBadge ? 'block' : 'none';
     // フィルターバーを表示
     updateFilterBar();
     filterBar.classList.add('active');
   } else {
     btn.classList.remove('has-filter');
-    // 解除後は画面に応じて件数バッジ表示を切り替え（brand画面とmemo画面のみ表示）
-    totalCount.style.display = (currentScreen === 'brand' || currentScreen === 'memo') ? 'block' : 'none';
+    // 解除後は画面に応じて件数バッジ表示を切り替え
+    totalCount.style.display = useCenterBadge ? 'block' : 'none';
     // フィルターバーを非表示
     filterBar.classList.remove('active');
   }
