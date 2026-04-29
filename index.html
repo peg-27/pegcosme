@@ -61,7 +61,7 @@
   --primary-lighter: #f1f4f9;
   --primary-dark: #6b82b0;
   --primary-pale: #b8c6e0;
-  --accent: #DEA6C4;
+  --accent: #E6AAC3;
   --accent-light: #faf0f0;
   --text: #3d3f50;
   --text-light: #7a7e92;
@@ -957,6 +957,21 @@ mark.hl {
 }
 .detail-copy-btn:active { background: var(--primary-light); }
 
+/* --- 詳細画面のタグチップ表示 --- */
+.detail-tag-chips {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 16px;
+}
+.detail-tag-chip {
+  display: inline-flex; align-items: center;
+  padding: 4px 12px;
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: 999px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 </style>
 
 <!-- ----- #DETAIL HTML ----- -->
@@ -1102,7 +1117,174 @@ mark.hl {
 }
 .form-ingredient-btn:active { background: var(--primary-light); }
 
+/* --- タグチップエリア（選択中タグ表示） --- */
+.form-tag-chips {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.form-tag-chips:empty { display: none; }
+.form-tag-chip {
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 4px 4px 4px 10px;
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: 999px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.form-tag-chip span { white-space: nowrap; }
+.form-tag-chip button {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  flex-shrink: 0;
+}
+.form-tag-chip button:active { background: rgba(0, 0, 0, 0.08); }
+.form-tag-chip svg {
+  width: 12px; height: 12px;
+  stroke: var(--primary);
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+/* --- タグ選択ボタン（モーダルを開くトリガー） --- */
+.form-tag-trigger {
+  height: 42px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 12px; font-size: 15px;
+  background: var(--card-bg); color: var(--text-lighter);
+  text-align: left;
+  display: flex; align-items: center; justify-content: space-between;
+  flex: 1;
+}
+.form-tag-trigger::after {
+  content: '';
+  width: 12px; height: 12px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b3' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  flex-shrink: 0;
+}
+
+/* --- タグ選択モーダル内のリスト --- */
+.tag-pick-list {
+  display: flex; flex-direction: column;
+  max-height: 50vh; overflow-y: auto;
+  margin: 4px -4px 0;
+}
+.tag-pick-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 15px; color: var(--text);
+  text-align: left;
+  background: transparent;
+  width: 100%;
+}
+.tag-pick-item:active { background: var(--primary-lighter); }
+.tag-pick-check {
+  width: 22px; height: 22px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+.tag-pick-item.checked .tag-pick-check {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+.tag-pick-check svg {
+  width: 12px; height: 12px;
+  stroke: #fff;
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+}
+.tag-pick-item.checked .tag-pick-check svg { opacity: 1; }
+.tag-pick-name { flex: 1; }
+.tag-pick-empty {
+  font-size: 13px;
+  color: var(--text-lighter);
+  text-align: center;
+  padding: 24px 0;
+}
+
 /* --- 登録・更新ボタン --- */
+
+/* --- ブランド選択トリガーボタン --- */
+.brand-pick-trigger {
+  height: 42px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 12px; font-size: 15px;
+  background: var(--card-bg); color: var(--text);
+  text-align: left;
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%;
+}
+.brand-pick-trigger::after {
+  content: '';
+  width: 12px; height: 12px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b3' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  flex-shrink: 0;
+}
+
+/* --- ブランド選択モーダル内のリスト --- */
+.brand-pick-list {
+  display: flex; flex-direction: column;
+  max-height: 70vh; overflow-y: auto;
+  margin: 4px -4px 0;
+}
+.brand-pick-header {
+  padding: 14px 8px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  letter-spacing: 0.05em;
+}
+.brand-pick-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 15px; color: var(--text);
+  text-align: left;
+  background: transparent;
+  width: 100%;
+}
+.brand-pick-item:active { background: var(--primary-lighter); }
+.brand-pick-radio {
+  width: 22px; height: 22px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.15s;
+}
+.brand-pick-item.selected .brand-pick-radio { border-color: var(--primary); }
+.brand-pick-item.selected .brand-pick-radio::after {
+  content: '';
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+.brand-pick-name { flex: 1; }
+.brand-pick-action { color: var(--primary); }
+
+/* --- プレースホルダー類の文字色を薄く統一 --- */
+.form-input::placeholder,
+.form-textarea::placeholder,
+.form-select.placeholder,
+.form-tag-trigger {
+  color: #bcc5d0;
+}
+
 </style>
 
 <!-- ----- #FORM HTML ----- -->
@@ -1117,12 +1299,15 @@ mark.hl {
       <input type="file" id="imageInput" accept="image/*" style="display:none" onchange="onImageSelected(event)">
     </div>
     <!-- ブランド選択 -->
-    <div class="form-group">
-      <label class="form-label form-required">ブランド名</label>
-      <select class="form-select" id="formBrand" onchange="onFormBrandChange(event)">
-        <option value="">ブランドなし（未分類）</option>
-      </select>
-    </div>
+<div class="form-group">
+  <label class="form-label form-required">ブランド名</label>
+  <button type="button" class="brand-pick-trigger" id="formBrandTrigger" onclick="openBrandPickModal()">
+    <span id="formBrandLabel">ブランドなし（未分類）</span>
+  </button>
+  <select id="formBrand" style="display:none">
+    <option value=""></option>
+  </select>
+</div>
     <!-- 商品名（必須） -->
     <div class="form-group">
       <label class="form-label form-required">商品名</label>
@@ -1148,6 +1333,23 @@ mark.hl {
           <option value="">スキンケア</option>
         </select>
         <button type="button" onclick="openAddCategoryModal('skincare')" style="
+          width:42px; height:42px; flex-shrink:0;
+          border:1px solid var(--border); border-radius:var(--radius-sm);
+          background:var(--card-bg); color:var(--primary);
+          font-size:22px; font-weight:600;
+          display:flex; align-items:center; justify-content:center;
+        ">＋</button>
+      </div>
+    </div>
+<!-- タグ選択（複数選択可） -->
+    <div class="form-group">
+      <label class="form-label">タグ</label>
+      <div class="form-tag-chips" id="formTagChips"></div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button type="button" class="form-tag-trigger" id="formTagTrigger" onclick="openTagPickModal()">
+          <span id="formTagTriggerLabel">タグを選択</span>
+        </button>
+        <button type="button" onclick="openAddTagModalForForm()" style="
           width:42px; height:42px; flex-shrink:0;
           border:1px solid var(--border); border-radius:var(--radius-sm);
           background:var(--card-bg); color:var(--primary);
@@ -1275,7 +1477,7 @@ mark.hl {
 
 
 <!-- ══════════════════════════════════════════
-     #SETTINGS 設定画面（CSS）
+     #SETTINGS 設定画面(CSS)
      ══════════════════════════════════════════ -->
 <style>
 /* --- 設定画面のレイアウト --- */
@@ -1325,7 +1527,7 @@ mark.hl {
 }
 .backup-reminder.show { display: block; }
 
-/* --- 設定メニュー項目（リンク風ボタン） --- */
+/* --- 設定メニュー項目(リンク風ボタン) --- */
 .settings-menu-item {
   display: flex; align-items: center; gap: 12px;
   width: 100%; padding: 14px 4px;
@@ -1443,14 +1645,17 @@ mark.hl {
   pointer-events: none;
 }
 
-/* --- ブランド管理画面（カテゴリ管理と共通スタイルを流用） --- */
+/* --- ブランド管理画面(カテゴリ管理と共通スタイルを流用) --- */
 .brand-manage-screen { padding: 16px; }
+
+/* --- タグ管理画面(ブランド管理と共通スタイルを流用) --- */
+.tag-manage-screen { padding: 16px; }
 
 </style>
 
 <!-- ----- #SETTINGS HTML ----- -->
 
-<!-- カテゴリ管理画面（設定 → カテゴリ管理で遷移） -->
+<!-- カテゴリ管理画面(設定 → カテゴリ管理で遷移) -->
 <div class="screen cat-manage-screen" id="screenCategoryManage">
   <div class="cat-list-card">
     <div class="cat-list" id="catList"></div>
@@ -1458,10 +1663,18 @@ mark.hl {
 
 </div>
 
-<!-- ブランド管理画面（設定 → ブランド管理で遷移） -->
+<!-- ブランド管理画面(設定 → ブランド管理で遷移) -->
 <div class="screen brand-manage-screen" id="screenBrandManage">
   <div class="cat-list-card">
     <div class="cat-list" id="brandManageList"></div>
+  </div>
+</div>
+
+<!-- タグ管理画面(設定 → タグ管理で遷移) -->
+<div class="screen tag-manage-screen" id="screenTagManage">
+  <div class="cat-list-card">
+    <div class="cat-list" id="tagManageList"></div>
+    <button class="cat-add-btn" onclick="showAddTagModal()">＋ タグを追加</button>
   </div>
 </div>
 
@@ -1571,11 +1784,51 @@ mark.hl {
   box-sizing: border-box;
 }
 
+/* タイトルと×ボタンを並べるヘッダー */
+.settings-modal-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0 14px;
+  min-height: 28px;
+}
+
 .settings-modal-title {
   font-size: 17px;
   font-weight: 700;
   text-align: center;
-  margin: 4px 0 14px;
+  margin: 0;
+}
+
+/* ヘッダー右端の×ボタン */
+.settings-modal-close-x {
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.settings-modal-close-x svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: var(--text-light);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.settings-modal-close-x:active {
+  background: var(--primary-lighter);
 }
 
 .settings-modal-menu {
@@ -1602,23 +1855,11 @@ mark.hl {
   margin-bottom: 12px;
 }
 
-.settings-modal-close-btn {
-  width: 100%;
-  height: 44px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-light);
-  background: var(--bg);
-  margin-top: 4px;
-}
-.settings-modal-close-btn:active { background: var(--primary-lighter); }
-
 </style>
 
 <!-- ----- #MODAL HTML ----- -->
 
-<!-- モーダル（確認ダイアログ・ブランド追加など共通で使用） -->
+<!-- モーダル(確認ダイアログ・ブランド追加など共通で使用) -->
 <div class="modal-overlay" id="modal">
   <div class="modal-box">
     <div class="modal-header" id="modalHeader"></div>
@@ -1627,10 +1868,17 @@ mark.hl {
   </div>
 </div>
 
-<!-- 設定モーダル（中央表示・︙ボタンから開く） -->
+<!-- 設定モーダル(中央表示・︙ボタンから開く) -->
 <div class="modal-overlay" id="settingsModal" onclick="closeSettingsModalOnBackdrop(event)">
   <div class="modal-box settings-modal-box" onclick="event.stopPropagation()">
-    <div class="settings-modal-title">設定</div>
+
+    <!-- ヘッダー(タイトル＋×ボタン) -->
+    <div class="settings-modal-header">
+      <div class="settings-modal-title">設定</div>
+      <button class="settings-modal-close-x" onclick="closeSettingsModal()" aria-label="閉じる">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
 
     <!-- メニュー項目 -->
     <div class="settings-modal-menu">
@@ -1648,6 +1896,11 @@ mark.hl {
         <span class="menu-label">ブランド管理</span>
         <svg class="menu-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
       </button>
+      <button class="settings-menu-item" onclick="openTagManage()">
+        <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none"/></svg>
+        <span class="menu-label">タグ管理</span>
+        <svg class="menu-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
     </div>
 
     <!-- バックアップ警告 -->
@@ -1657,7 +1910,7 @@ mark.hl {
 
     <!-- エクスポート -->
     <div class="settings-section">
-      <div class="settings-section-title">エクスポート（書き出し）</div>
+      <div class="settings-section-title">エクスポート(書き出し)</div>
       <div class="settings-info">全データをJSONファイルとして端末に保存します。</div>
       <div class="settings-date" id="lastBackupDate">最終バックアップ：なし</div>
       <button class="settings-btn settings-export" onclick="exportData()">
@@ -1668,7 +1921,7 @@ mark.hl {
 
     <!-- インポート -->
     <div class="settings-section">
-      <div class="settings-section-title">インポート（読み込み）</div>
+      <div class="settings-section-title">インポート(読み込み)</div>
       <div class="settings-info">JSONファイルからデータを復元します。現在のデータは上書きされます。</div>
       <button class="settings-btn settings-import" onclick="importData()">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -1677,8 +1930,6 @@ mark.hl {
       <input type="file" id="importInput" accept=".json" style="display:none" onchange="onImportSelected(event)">
     </div>
 
-    <!-- 閉じるボタン -->
-    <button class="settings-modal-close-btn" onclick="closeSettingsModal()">閉じる</button>
   </div>
 </div>
 
@@ -1797,7 +2048,7 @@ mark.hl {
    ══════════════════════════════════════════ */
 
 const DB_NAME = 'PEGCosmeDB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 let db = null;
 
 // --- DB接続を開く（初回はストア作成も行う） ---
@@ -1842,6 +2093,11 @@ function openDB() {
         defaults.forEach((cat, i) => {
           cs.put({ id: genId() + String(i), name: cat.name, group: cat.group, order: i });
         });
+      }
+      // タグストア（v4で追加：ユーザー任意のタグ管理）
+      if (!d.objectStoreNames.contains('tags')) {
+        const ts = d.createObjectStore('tags', { keyPath: 'id' });
+        ts.createIndex('name', 'name', { unique: true });
       }
 
       // v2→v3アップグレード：既存カテゴリにgroup付与
@@ -1958,74 +2214,82 @@ async function markDataUpdated() {
    #STATE 画面遷移・状態管理
    ══════════════════════════════════════════ */
 
-// --- カテゴリ一覧（DBから読み込む） ---
+// --- カテゴリ一覧(DBから読み込む) ---
 let allCategories = [];
 
+// --- タグ一覧(DBから読み込む) ---
+let allTags = [];
+
 // --- アプリの状態変数 ---
-let currentTab = 'card';        // 現在のタブ（'card' or 'memo'）
+let currentTab = 'card';        // 現在のタブ('card' or 'memo')
 let currentScreen = 'brand';    // 現在表示中の画面名
-let screenHistory = [];         // 画面遷移の履歴（戻る用）
+let screenHistory = [];         // 画面遷移の履歴(戻る用)
 let currentBrandId = null;      // 選択中のブランドID
+let currentTagId = null;        // 選択中のタグID
+let folderNavList = [];         // フォルダ間スワイプ移動用のフォルダ一覧
+let folderNavIndex = 0;         // フォルダ間スワイプ移動の現在位置
+let isFolderSwipe = false;      // フォルダ間スワイプ中フラグ（スクロール位置の処理に使用）
 let currentProductId = null;    // 選択中の商品ID
-let editingProductId = null;    // 編集中の商品ID（新規時はnull）
+let editingProductId = null;    // 編集中の商品ID(新規時はnull)
 let currentMemoId = null;       // 選択中のメモID
-let editingMemoId = null;       // 編集中のメモID（新規時はnull）
-let formImages = [];            // フォームで選択された画像のBase64データ配列（最大3枚）
+let editingMemoId = null;       // 編集中のメモID(新規時はnull)
+let formImages = [];            // フォームで選択された画像のBase64データ配列(最大3枚)
 
 let isPopState = false;         // popstateイベント処理中フラグ
-let searchOpenedAtDetail = false; // 検索モードを詳細画面で開始したか（戻る時の挙動制御用）
+let searchOpenedAtDetail = false; // 検索モードを詳細画面で開始したか(戻る時の挙動制御用)
 
 // --- スクロール位置保存用 ---
 let scrollPositions = {};       // 一覧画面ごとのスクロール位置を保存
 
 // --- ソート・フィルター状態 ---
-let currentSort = 'createdAt_desc';       // カードタブのソート（デフォルト：登録日新しい順）
-let currentMemoSort = 'date_desc';        // メモタブのソート（デフォルト：日付新しい順）
-let currentCategoryFilter = null;         // カテゴリフィルター（null＝すべて）
+let currentSort = 'createdAt_desc';       // カードタブのソート(デフォルト：登録日新しい順)
+let currentMemoSort = 'date_desc';        // メモタブのソート(デフォルト：日付新しい順)
+let currentCategoryFilter = null;         // カテゴリフィルター(null＝すべて)
 
 // --- 並べ替えモード ---
 let isSortMode = false;           // 並べ替えモード中かどうか
-let sortModeWorkingOrder = [];    // 並べ替えモード編集中の順番（確定前）
+let sortModeWorkingOrder = [];    // 並べ替えモード編集中の順番(確定前)
 let shouldResetSortForBrand = false; // 商品一覧画面に入った直後かどうかのフラグ
 
 // --- カードタブ ソート選択肢の定義 ---
 const SORT_OPTIONS = [
-  { key: 'createdAt_desc',    label: '登録日（新しい順）' },
-  { key: 'createdAt_asc',     label: '登録日（古い順）' },
-  { key: 'purchaseDate_desc', label: '購入時期（新しい順）' },
-  { key: 'purchaseDate_asc',  label: '購入時期（古い順）' },
-  { key: 'price_desc',        label: '価格（高い順）' },
-  { key: 'price_asc',         label: '価格（安い順）' },
-  { key: 'name_asc',          label: '名前順（あ→わ）' },
+  { key: 'createdAt_desc',    label: '登録日(新しい順)' },
+  { key: 'createdAt_asc',     label: '登録日(古い順)' },
+  { key: 'purchaseDate_desc', label: '購入時期(新しい順)' },
+  { key: 'purchaseDate_asc',  label: '購入時期(古い順)' },
+  { key: 'price_desc',        label: '価格(高い順)' },
+  { key: 'price_asc',         label: '価格(安い順)' },
+  { key: 'name_asc',          label: '名前順(あ→わ)' },
 ];
 
 // --- メモタブ ソート選択肢の定義 ---
 const MEMO_SORT_OPTIONS = [
-  { key: 'date_desc', label: '登録日（新しい順）' },
-  { key: 'date_asc',  label: '登録日（古い順）' },
-  { key: 'name_asc',  label: '名前順（あ→わ）' },
+  { key: 'date_desc', label: '登録日(新しい順)' },
+  { key: 'date_asc',  label: '登録日(古い順)' },
+  { key: 'name_asc',  label: '名前順(あ→わ)' },
 ];
 
 // --- 画面名から所属タブを判定するヘルパー ---
-// （goToTopでタブをまたいだ後、戻る時に正しいタブに復帰させるため）
+// (goToTopでタブをまたいだ後、戻る時に正しいタブに復帰させるため)
 function getTabForScreen(screen) {
   const memoScreens = ['memo', 'memoDetail', 'memoForm'];
   return memoScreens.includes(screen) ? 'memo' : 'card';
 }
 
-// --- スクロール位置のキーを取得（一覧画面のみ対象） ---
+// --- スクロール位置のキーを取得(一覧画面のみ対象) ---
 function getScrollKey(screenName) {
   if (screenName === 'brand') return 'brand';
   if (screenName === 'products') return `products_${currentBrandId}`;
+  if (screenName === 'tagProducts') return `tagProducts_${currentTagId}`;
   if (screenName === 'memo') return 'memo';
   return null;  // 一覧画面ではない場合はnull
 }
 
-// --- スクロール位置の復元（描画完了を待ちながらリトライ） ---
+// --- スクロール位置の復元(描画完了を待ちながらリトライ) ---
 function restoreScrollPosition(target) {
   const mainArea = document.getElementById('mainArea');
   let attempts = 0;
-  const maxAttempts = 30;  // 最大30フレーム（約500ms）まで試す
+  const maxAttempts = 30;  // 最大30フレーム(約500ms)まで試す
   const tryRestore = () => {
     mainArea.scrollTop = target;
     attempts++;
@@ -2039,31 +2303,33 @@ function restoreScrollPosition(target) {
 
 // --- 画面切替のメイン関数 ---
 function showScreen(name, pushHistory = true) {
-  // 画面を離れる前に、一覧画面のスクロール位置を保存
-  const prevKey = getScrollKey(currentScreen);
-  if (prevKey) {
-    scrollPositions[prevKey] = document.getElementById('mainArea').scrollTop;
+  // 画面を離れる前に、一覧画面のスクロール位置を保存（フォルダ間スワイプ時はスキップ）
+  if (!isFolderSwipe) {
+    const prevKey = getScrollKey(currentScreen);
+    if (prevKey) {
+      scrollPositions[prevKey] = document.getElementById('mainArea').scrollTop;
+    }
   }
 
-  // 画面履歴に追加（戻る操作用）
+  // 画面履歴に追加(戻る操作用)
   if (pushHistory && currentScreen !== name) {
     screenHistory.push(currentScreen);
-    // ブラウザ履歴にpush（popstate経由でない場合のみ）
+    // ブラウザ履歴にpush(popstate経由でない場合のみ)
     if (!isPopState) {
       history.pushState({ screen: name }, '');
     }
   }
   currentScreen = name;
 
-  // タイトルバーの表示制御（フォーム画面では非表示）
+  // タイトルバーの表示制御(フォーム画面では非表示)
   if (name === 'form' || name === 'memoForm') {
     document.body.classList.add('no-title-bar');
   } else {
     document.body.classList.remove('no-title-bar');
   }
 
-  // 画面遷移時：検索モードのヘッダー状態をリセット（ヘッダー背景色・検索バー・モード用ボタン）
-  // ※ searchInput.value は一覧画面に「前進」する時のみクリア（戻る時は保持して検索モードを復元する）
+  // 画面遷移時：検索モードのヘッダー状態をリセット(ヘッダー背景色・検索バー・モード用ボタン)
+  // ※ searchInput.value は一覧画面に「前進」する時のみクリア(戻る時は保持して検索モードを復元する)
   const headerEl = document.querySelector('.header');
   if (headerEl.classList.contains('search-mode')) {
     headerEl.classList.remove('search-mode');
@@ -2072,12 +2338,12 @@ function showScreen(name, pushHistory = true) {
     document.getElementById('searchTotalCount').style.display = 'none';
   }
   // 一覧画面に「前進」する時のみ検索クエリをクリア
-  if (pushHistory && (name === 'brand' || name === 'products' || name === 'memo')) {
+  if (pushHistory && (name === 'brand' || name === 'products' || name === 'tagProducts' || name === 'memo')) {
     document.getElementById('searchInput').value = '';
     document.getElementById('searchClear').classList.remove('show');
   }
 
-  // 中央バッジ用の余白クラスをいったん外す（各画面のcaseで必要に応じて再付与）
+  // 中央バッジ用の余白クラスをいったん外す(各画面のcaseで必要に応じて再付与)
   headerEl.classList.remove('title-with-center-count');
 
   // 全画面を非表示にしてから対象だけ表示
@@ -2104,7 +2370,7 @@ function showScreen(name, pushHistory = true) {
   const searchCount = document.getElementById('searchTotalCount');
   const filterBar = document.getElementById('filterBar');
 
-  // デフォルト表示状態（一覧画面向け）
+  // デフォルト表示状態(一覧画面向け)
   backBtn.style.display = 'none';
   searchBtn.style.display = 'none';
   searchCloseBtn.style.display = 'none';
@@ -2125,8 +2391,8 @@ function showScreen(name, pushHistory = true) {
   // ドロップダウンを閉じる
   closeAllDropdowns();
 
-  // フィルターバー：一覧画面（brand/products）でフィルター適用中のみ表示
-  if ((name === 'brand' || name === 'products') && currentCategoryFilter) {
+  // フィルターバー：一覧画面(brand/products)でフィルター適用中のみ表示
+  if ((name === 'brand' || name === 'products' || name === 'tagProducts') && currentCategoryFilter) {
     updateFilterBar();
     filterBar.classList.add('active');
   } else {
@@ -2152,20 +2418,34 @@ function showScreen(name, pushHistory = true) {
       break;
     case 'products':
       document.getElementById('screenProducts').classList.add('active');
-      // backBtnは非表示、searchBtnを表示（ヘッダー左端を全画面で統一）
+      // backBtnは非表示、searchBtnを表示(ヘッダー左端を全画面で統一)
       searchBtn.style.display = 'flex';
+      // タブバーを非表示（フォルダ画面ではフォルダ間スワイプを優先）
+      tabBar.style.display = 'none';
       // タイトルはrenderProducts内で「ブランド名 (○件)」の形にセットするため、ここでは仮で空
       title.textContent = '';
       sortBtn.style.display = 'flex';
       filterBtn.style.display = 'flex';
-      // 中央の件数バッジは使わない（タイトルに件数を含めるため）
+      // 中央の件数バッジは使わない(タイトルに件数を含めるため)
       // ※ totalCount.style.display は既に 'none' のまま
       shouldResetSortForBrand = true;
       renderProducts();
       break;
+    case 'tagProducts':
+      // タグフォルダ画面はブランドフォルダ画面のHTMLを流用
+      document.getElementById('screenProducts').classList.add('active');
+      searchBtn.style.display = 'flex';
+      // タブバーを非表示（フォルダ画面ではフォルダ間スワイプを優先）
+      tabBar.style.display = 'none';
+      title.textContent = '';
+      sortBtn.style.display = 'flex';
+      filterBtn.style.display = 'flex';
+      shouldResetSortForBrand = true;
+      renderTagProducts();
+      break;
     case 'detail':
       document.getElementById('screenDetail').classList.add('active');
-      // backBtnは非表示、searchBtnを表示（成分検索などができるように）
+      // backBtnは非表示、searchBtnを表示(成分検索などができるように)
       searchBtn.style.display = 'flex';
       tabBar.style.display = 'none';
       fab.style.display = 'none';
@@ -2210,7 +2490,7 @@ function showScreen(name, pushHistory = true) {
       break;
     case 'memoDetail':
       document.getElementById('screenMemoDetail').classList.add('active');
-      // backBtnは非表示、searchBtnを表示（メモ内検索ができるように）
+      // backBtnは非表示、searchBtnを表示(メモ内検索ができるように)
       searchBtn.style.display = 'flex';
       tabBar.style.display = 'none';
       fab.style.display = 'none';
@@ -2240,20 +2520,29 @@ function showScreen(name, pushHistory = true) {
       title.textContent = 'ブランド管理';
       renderBrandManageList();
       break;
+    case 'tagManage':
+      document.getElementById('screenTagManage').classList.add('active');
+      backBtn.style.display = 'flex';
+      tabBar.style.display = 'none';
+      fab.style.display = 'none';
+      settingsBtn.style.display = 'none';
+      title.textContent = 'タグ管理';
+      renderTagManageList();
+      break;
   }
 
   // スクロール位置を復元または先頭にリセット
   const newKey = getScrollKey(name);
-  if (newKey && !pushHistory && scrollPositions[newKey] > 0) {
+  if (!isFolderSwipe && newKey && !pushHistory && scrollPositions[newKey] > 0) {
     // 戻る操作で一覧画面に戻った場合 → 保存位置を復元
     restoreScrollPosition(scrollPositions[newKey]);
   } else {
-    // それ以外（新規に前進する場合や詳細画面など） → 先頭にリセット
+    // それ以外(新規に前進する場合・詳細画面・フォルダ間スワイプなど) → 先頭にリセット
     document.getElementById('mainArea').scrollTop = 0;
   }
 
   // 戻る操作で一覧画面に戻ってきた時の検索モード制御
-  if (!pushHistory && (name === 'brand' || name === 'products' || name === 'memo')) {
+  if (!pushHistory && (name === 'brand' || name === 'products' || name === 'tagProducts' || name === 'memo')) {
     if (searchOpenedAtDetail) {
       // 詳細画面で開始した検索 → 一覧画面に戻ったらクエリをクリアして検索モードを完全解除
       document.getElementById('searchInput').value = '';
@@ -2266,7 +2555,7 @@ function showScreen(name, pushHistory = true) {
   }
 }
 
-// --- タイトルバーのPEG COSMEロゴ：タップでトップ画面（ブランド一覧）へ ---
+// --- タイトルバーのPEG COSMEロゴ：タップでトップ画面(ブランド一覧)へ ---
 function goToTop() {
   const isOnTop = (currentScreen === 'brand');
   const headerEl = document.querySelector('.header');
@@ -2281,10 +2570,10 @@ function goToTop() {
   document.getElementById('btnFilter').classList.remove('has-filter');
 
   // 検索モード関連のフラグをリセット
-  // （検索モード自体はshowScreen内で自動的に解除される）
+  // (検索モード自体はshowScreen内で自動的に解除される)
   searchOpenedAtDetail = false;
 
-  // タブをカードに切り替え（履歴は保持したまま）
+  // タブをカードに切り替え(履歴は保持したまま)
   if (currentTab !== 'card') {
     currentTab = 'card';
     document.querySelectorAll('.tab-btn').forEach(b => {
@@ -2301,11 +2590,11 @@ function goToTop() {
 let formSubmitted = false; // submitProduct/submitMemoで保存済みフラグ
 
 async function goBack() {
-  // メモフォームからの戻りは自動保存（submit済みならスキップ）
+  // メモフォームからの戻りは自動保存(submit済みならスキップ)
   if (currentScreen === 'memoForm' && !formSubmitted) {
     await autoSaveMemo();
   }
-  // 商品フォームからの戻りは自動保存（submit済みならスキップ）
+  // 商品フォームからの戻りは自動保存(submit済みならスキップ)
   if (currentScreen === 'form' && !formSubmitted) {
     await autoSaveProduct();
   }
@@ -2314,7 +2603,7 @@ async function goBack() {
     const prev = screenHistory.pop();
 
     // 戻り先の画面が別タブの画面なら、タブも切り替える
-    // （goToTopでタブをまたいだ後、戻る時に正しいタブに復帰させる）
+    // (goToTopでタブをまたいだ後、戻る時に正しいタブに復帰させる)
     const targetTab = getTabForScreen(prev);
     if (targetTab !== currentTab) {
       currentTab = targetTab;
@@ -2331,7 +2620,7 @@ async function goBack() {
   }
 }
 
-// --- ブラウザの戻るボタン対応（popstateイベント） ---
+// --- ブラウザの戻るボタン対応(popstateイベント) ---
 let exitConfirmed = false; // 終了確認ダイアログでOKが押された時のフラグ
 
 window.addEventListener('popstate', (e) => {
@@ -2341,7 +2630,7 @@ window.addEventListener('popstate', (e) => {
     return;
   }
 
-  // ライトボックスが開いていたら閉じるだけ（履歴はback時に既に消費済み）
+  // ライトボックスが開いていたら閉じるだけ(履歴はback時に既に消費済み)
   if (document.getElementById('lightbox').classList.contains('show')) {
     document.getElementById('lightbox').classList.remove('show');
     lightboxImages = [];
@@ -2377,8 +2666,8 @@ window.addEventListener('popstate', (e) => {
     return;
   }
 
-  // 一覧画面かどうか（brand/products/memo）
-  const isListScreen = currentScreen === 'brand' || currentScreen === 'products' || currentScreen === 'memo';
+  // 一覧画面かどうか(brand/products/memo)
+  const isListScreen = currentScreen === 'brand' || currentScreen === 'products' || currentScreen === 'tagProducts' || currentScreen === 'memo';
   const headerEl = document.querySelector('.header');
 
   // 一覧画面で検索モード中 → 検索モードのみ解除
@@ -2432,7 +2721,7 @@ function showExitDialog() {
   });
 }
 
-// --- タブ切替（カード ↔ メモ） ---
+// --- タブ切替(カード ↔ メモ) ---
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab-btn').forEach(b => {
@@ -2449,7 +2738,7 @@ function switchTab(tab) {
   }
 }
 
-// --- スワイプでタブ切替（トップ画面 + ブランドフォルダ内） ---
+// --- スワイプでタブ切替(トップ画面 + ブランドフォルダ内) ---
 {
   let swipeStartX = 0;
   let swipeStartY = 0;
@@ -2464,16 +2753,18 @@ function switchTab(tab) {
   }, { passive: true });
 
   mainArea.addEventListener('touchend', (e) => {
-    // 並べ替えモード中はスワイプ無効（誤動作防止）
+    // 並べ替えモード中はスワイプ無効(誤動作防止)
     if (isSortMode) return;
 
-    // タブ切替スワイプを許可する画面：
-    //   - ブランド一覧（brand）、ブランドフォルダ内（products）… カードタブ
-    //   - メモ一覧（memo）                                      … メモタブ
-    const canTabSwipe =
-      (currentTab === 'card' && (currentScreen === 'brand' || currentScreen === 'products')) ||
+    // スワイプを許可する画面の判定
+    //   - トップ画面（brand/memo） … 左右スワイプでタブ切替
+    //   - フォルダ画面（products/tagProducts） … 左右スワイプでフォルダ移動
+    const isTopTabSwipe =
+      (currentTab === 'card' && currentScreen === 'brand') ||
       (currentTab === 'memo' && currentScreen === 'memo');
-    if (!canTabSwipe) return;
+    const isFolderNavSwipe =
+      currentScreen === 'products' || currentScreen === 'tagProducts';
+    if (!isTopTabSwipe && !isFolderNavSwipe) return;
 
     const dx = e.changedTouches[0].clientX - swipeStartX;
     const dy = e.changedTouches[0].clientY - swipeStartY;
@@ -2483,10 +2774,18 @@ function switchTab(tab) {
 
     // 横方向に十分な距離・速度で、かつ縦方向より大きいスワイプ
     if (absDx > 70 && absDx > absDy * 1.5 && dt < 400) {
-      if (dx < 0 && currentTab === 'card') {
-        switchTab('memo');  // 左スワイプ → メモへ
-      } else if (dx > 0 && currentTab === 'memo') {
-        switchTab('card');  // 右スワイプ → カードへ
+      if (isTopTabSwipe) {
+        if (dx < 0 && currentTab === 'card') {
+          switchTab('memo');  // 左スワイプ → メモへ
+        } else if (dx > 0 && currentTab === 'memo') {
+          switchTab('card');  // 右スワイプ → カードへ
+        }
+      } else if (isFolderNavSwipe) {
+        if (dx < 0) {
+          navigateFolder(1);   // 左スワイプ → 次のフォルダへ
+        } else {
+          navigateFolder(-1);  // 右スワイプ → 前のフォルダへ
+        }
       }
     }
   }, { passive: true });
@@ -2501,17 +2800,53 @@ function getBrandName(id) {
   return brand ? brand.name : '';
 }
 
-// --- FABボタン押下時の動作（画面に応じて分岐） ---
+// --- FABボタン押下時の動作(画面に応じて分岐) ---
 function onFabClick() {
   if (currentTab === 'card') {
     if (currentScreen === 'brand') {
       showFabMenu();             // 新規カード or 新規ブランド選択
-    } else if (currentScreen === 'products') {
+    } else if (currentScreen === 'products' || currentScreen === 'tagProducts') {
       openProductForm(null);     // 商品新規登録フォーム
     }
   } else {
     openMemoForm(null);          // メモ新規登録フォーム
   }
+}
+
+// --- タグ名をデータから取得するヘルパー ---
+function getTagName(id) {
+  const tag = allTags.find(t => t.id === id);
+  return tag ? tag.name : '';
+}
+
+// --- フォルダ間スワイプ移動 ---
+function navigateFolder(direction) {
+  // direction: +1（次へ）または -1（前へ）
+  const newIndex = folderNavIndex + direction;
+
+  // 端に達したらトーストで知らせて止まる
+  if (newIndex < 0 || newIndex >= folderNavList.length) {
+    toast(direction > 0 ? '次のフォルダがありません' : '前のフォルダがありません');
+    return;
+  }
+
+  folderNavIndex = newIndex;
+  const target = folderNavList[folderNavIndex];
+
+  // フォルダ間スワイプフラグを立ててスクロール処理を制御
+  isFolderSwipe = true;
+
+  if (target.type === 'tag') {
+    currentTagId = target.id;
+    currentBrandId = null;
+    showScreen('tagProducts', false);  // 履歴に積まない（戻るボタンは常にトップへ）
+  } else {
+    currentBrandId = target.id;
+    currentTagId = null;
+    showScreen('products', false);
+  }
+
+  isFolderSwipe = false;
 }
 
 
@@ -2562,13 +2897,17 @@ function renderSortDropdown() {
   let html = '<div class="dropdown-section-title">並び替え</div>';
 
   // カードタブでは「並べ替え順」を先頭に追加
-  //  - 商品一覧画面：ブランドにsortOrderがあれば有効、なければグレーアウト
-  //  - ブランド一覧画面：概念的に非該当なので常にグレーアウト（UI統一のため項目自体は表示）
+  //  - ブランドフォルダ画面：brand.sortOrder があれば有効
+  //  - タグフォルダ画面：tag.cardOrder があれば有効
+  //  - ブランド一覧画面：概念的に非該当なので常にグレーアウト
   if (!isMemo) {
     let hasOrder = false;
     if (currentScreen === 'products') {
       const brand = allBrands.find(b => b.id === currentBrandId);
       hasOrder = !!(brand?.sortOrder && brand.sortOrder.length > 0);
+    } else if (currentScreen === 'tagProducts') {
+      const tag = allTags.find(t => t.id === currentTagId);
+      hasOrder = !!(tag?.cardOrder && tag.cardOrder.length > 0);
     }
     const isActive = active === 'custom';
     const disabledClass = hasOrder ? '' : ' disabled';
@@ -2667,6 +3006,7 @@ function applySort(sortKey) {
     closeAllDropdowns();
     if (currentScreen === 'brand') renderBrands();
     else if (currentScreen === 'products') renderProducts();
+    else if (currentScreen === 'tagProducts') renderTagProducts();
   }
 }
 
@@ -2704,6 +3044,7 @@ function applyCategoryFilter(categoryName) {
   // 現在の画面を再描画
   if (currentScreen === 'brand') renderBrands();
   else if (currentScreen === 'products') renderProducts();
+  else if (currentScreen === 'tagProducts') renderTagProducts();
 }
 
 // --- フィルターバーのラベルを更新 ---
@@ -2768,7 +3109,9 @@ async function loadAllData() {
   allProducts = await dbGetAll('products');
   allMemos = await dbGetAll('memos');
   allCategories = await dbGetAll('categories');
+  allTags = await dbGetAll('tags');
   allCategories.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+  allTags.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
   allBrands.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
   allMemos.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 }
@@ -2801,11 +3144,14 @@ async function renderBrands() {
       }
     }
 
-    // 検索フィルタ
+    // 検索フィルタ（AND検索・ブランド名も対象）
     if (query) {
+      const queries = splitQuery(rawQuery);
+      const brandMap = new Map(allBrands.map(b => [b.id, b.name]));
       products = products.filter(p => {
-        const text = [p.name, p.categoryMakeup, p.categorySkincare, p.ingredients, p.memo, p.volume, p.price].join(' ').toLowerCase();
-        return text.includes(query);
+        const brandName = brandMap.get(p.brandId) || '';
+        const text = [p.name, brandName, p.categoryMakeup, p.categorySkincare, p.ingredients, p.memo, p.volume, p.price].join(' ').toLowerCase();
+        return matchesAllQueries(text, queries);
       });
     }
 
@@ -2814,15 +3160,8 @@ async function renderBrands() {
       document.getElementById('headerTotalCount').textContent = products.length + '件';
     }
     if (query) {
-      // 検索ヒット箇所の総数（商品データ＋ブランド名）
-      const brandMap = new Map(allBrands.map(b => [b.id, b.name]));
-      const hitCount = products.reduce((sum, p) => {
-        let c = countProductHits(p, rawQuery);
-        const brandName = brandMap.get(p.brandId);
-        if (brandName) c += countHits(brandName, rawQuery);
-        return sum + c;
-      }, 0);
-      document.getElementById('searchTotalCount').textContent = hitCount + '件';
+      // 検索でヒットした商品の件数を表示
+      document.getElementById('searchTotalCount').textContent = products.length + '件';
     }
 
     // ソート
@@ -2878,8 +3217,13 @@ async function renderBrands() {
     return;
   }
 
-  // === 通常表示（フィルターなし・検索なし）：ブランドフォルダ一覧 ===
+  // === 通常表示（フィルターなし・検索なし）：タグ＋ブランドフォルダ一覧 ===
   let brands = allBrands;
+
+  // タグフォルダ：中身が1件以上あるタグだけ抽出
+  let tags = allTags.filter(t =>
+    allProducts.some(p => Array.isArray(p.tagIds) && p.tagIds.includes(t.id))
+  );
 
   // 未分類商品（brandIdがnullまたは空）を取得
   let unassigned = allProducts.filter(p => !p.brandId);
@@ -2911,11 +3255,38 @@ async function renderBrands() {
     });
   }
 
+  // --- タグのソート（ブランドと同じロジック） ---
+  if (currentSort === 'name_asc') {
+    tags.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  } else {
+    const [field, order] = currentSort.split('_');
+    const dir = order === 'asc' ? 1 : -1;
+
+    const tagValue = (tagId) => {
+      const prods = allProducts.filter(p => Array.isArray(p.tagIds) && p.tagIds.includes(tagId));
+      if (prods.length === 0) return field === 'price' ? 0 : '';
+      if (field === 'price') {
+        return Math.max(...prods.map(p => Number(p.price) || 0));
+      }
+      const vals = prods.map(p => p[field] || '').filter(Boolean);
+      if (vals.length === 0) return '';
+      vals.sort();
+      return vals[vals.length - 1];
+    };
+
+    tags.sort((a, b) => {
+      const va = tagValue(a.id);
+      const vb = tagValue(b.id);
+      if (field === 'price') return (va - vb) * dir;
+      return String(va).localeCompare(String(vb), 'ja') * dir;
+    });
+  }
+
   // --- 未分類商品のソート ---
   unassigned = sortProducts(unassigned, currentSort);
 
-  // ブランドも未分類も0件
-  if (brands.length === 0 && unassigned.length === 0) {
+  // タグもブランドも未分類も0件
+  if (brands.length === 0 && tags.length === 0 && unassigned.length === 0) {
     list.innerHTML = '';
     empty.style.display = 'flex';
     empty.querySelector('p').innerHTML = 'まだ何も登録されていません<br>＋ボタンからカードを追加してください';
@@ -2925,6 +3296,20 @@ async function renderBrands() {
   empty.style.display = 'none';
 
   const thumbIcon = `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+
+  // タグカード一覧を生成（タグフォルダ・長押しなし）
+  const tagHTML = tags.map(t => {
+    const count = allProducts.filter(p => Array.isArray(p.tagIds) && p.tagIds.includes(t.id)).length;
+    return `<div class="brand-card" data-tag-id="${t.id}"
+      onclick="openTag('${t.id}')"
+      oncontextmenu="return false">
+      <div class="brand-info">
+        <div class="brand-name">#${esc(t.name)}</div>
+        <div class="brand-count">${count}件の商品</div>
+      </div>
+      <svg class="brand-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+    </div>`;
+  }).join('');
 
   // ブランドカード一覧を生成（長押し対応）
   const brandHTML = brands.map(b => {
@@ -2970,12 +3355,31 @@ async function renderBrands() {
     </div>`;
   }));
 
-  list.innerHTML = brandHTML + unassignedCardList.join('');
+  list.innerHTML = tagHTML + brandHTML + unassignedCardList.join('');
+}
+
+// --- トップ画面のDOMからフォルダ一覧を組み立てる（スワイプ移動用） ---
+function buildFolderNavList(currentType, currentId) {
+  const folderEls = document.querySelectorAll('#brandList .brand-card');
+  folderNavList = Array.from(folderEls).map(el => {
+    if (el.dataset.tagId) {
+      return { type: 'tag', id: el.dataset.tagId };
+    } else {
+      return { type: 'brand', id: el.dataset.id };
+    }
+  });
+  folderNavIndex = folderNavList.findIndex(f => f.type === currentType && f.id === currentId);
+  if (folderNavIndex === -1) {
+    folderNavList = [{ type: currentType, id: currentId }];
+    folderNavIndex = 0;
+  }
 }
 
 // --- ブランドをタップ → 商品一覧画面へ ---
 function openBrand(id) {
+  buildFolderNavList('brand', id);
   currentBrandId = id;
+  currentTagId = null;
   showScreen('products');
 }
 
@@ -3104,6 +3508,14 @@ function addBrandFromMoveModal(productId) {
   }, 100);
 }
 
+// --- タグフォルダをタップ → タグ商品一覧画面へ ---
+function openTag(tagId) {
+  buildFolderNavList('tag', tagId);
+  currentTagId = tagId;
+  currentBrandId = null;
+  showScreen('tagProducts');
+}
+
 
 /* ══════════════════════════════════════════
    #PRODUCT_JS 商品一覧ロジック
@@ -3150,9 +3562,12 @@ async function renderProducts() {
   }
 
   if (query) {
+    const queries = splitQuery(rawQuery);
+    const brandMap = new Map(allBrands.map(b => [b.id, b.name]));
     products = products.filter(p => {
-      const text = [p.name, p.categoryMakeup, p.categorySkincare, p.ingredients, p.memo, p.volume, p.price].join(' ').toLowerCase();
-      return text.includes(query);
+      const brandName = brandMap.get(p.brandId) || '';
+      const text = [p.name, brandName, p.categoryMakeup, p.categorySkincare, p.ingredients, p.memo, p.volume, p.price].join(' ').toLowerCase();
+      return matchesAllQueries(text, queries);
     });
   }
 
@@ -3161,10 +3576,9 @@ async function renderProducts() {
   document.getElementById('headerTitle').innerHTML =
     `${esc(brandName)}<span class="header-title-count">(${products.length}件)</span>`;
 
-  // 検索モード中は検索バー内にヒット箇所の総数を表示
+  // 検索モード中は検索バー内にヒット商品の件数を表示
   if (query) {
-    const hitCount = products.reduce((sum, p) => sum + countProductHits(p, rawQuery), 0);
-    document.getElementById('searchTotalCount').textContent = hitCount + '件';
+    document.getElementById('searchTotalCount').textContent = products.length + '件';
   }
 
   // 現在ブランドの sortOrder を取得（custom ソート用）
@@ -3217,12 +3631,132 @@ async function renderProducts() {
   list.innerHTML = cardHtmlList.join('');
 }
 
+// --- 選択中タグの商品一覧を描画 ---
+async function renderTagProducts() {
+  await loadAllData();
+
+  // 並べ替えモード中は専用レンダリング
+  if (isSortMode) {
+    renderSortModeList();
+    return;
+  }
+
+  // タグ切替直後の currentSort 調整（ブランド画面と同じフラグを流用）
+  if (shouldResetSortForBrand) {
+    shouldResetSortForBrand = false;
+    const tag = allTags.find(t => t.id === currentTagId);
+    if (tag?.cardOrder && tag.cardOrder.length > 0) {
+      currentSort = 'custom';
+    } else if (currentSort === 'custom') {
+      currentSort = 'createdAt_desc';
+    }
+  }
+
+  const query = document.getElementById('searchInput').value.trim().toLowerCase();
+  const rawQuery = document.getElementById('searchInput').value.trim();
+  const list = document.getElementById('productList');
+  const empty = document.getElementById('productEmpty');
+
+  // タグIDで絞り込み
+  let products = allProducts.filter(p =>
+    Array.isArray(p.tagIds) && p.tagIds.includes(currentTagId)
+  );
+
+  // カテゴリフィルター
+  if (currentCategoryFilter) {
+    if (currentCategoryFilter === 'group:skincare') {
+      products = products.filter(p => p.categorySkincare);
+    } else if (currentCategoryFilter === 'group:makeup') {
+      products = products.filter(p => p.categoryMakeup);
+    } else {
+      products = products.filter(p =>
+        p.categoryMakeup === currentCategoryFilter || p.categorySkincare === currentCategoryFilter
+      );
+    }
+  }
+
+  // 検索フィルタ（AND検索・ブランド名も対象）
+  if (query) {
+    const queries = splitQuery(rawQuery);
+    const brandMap = new Map(allBrands.map(b => [b.id, b.name]));
+    products = products.filter(p => {
+      const brandName = brandMap.get(p.brandId) || '';
+      const text = [p.name, brandName, p.categoryMakeup, p.categorySkincare, p.ingredients, p.memo, p.volume, p.price].join(' ').toLowerCase();
+      return matchesAllQueries(text, queries);
+    });
+  }
+
+  // ヘッダータイトルに「#タグ名 (件数)」を表示
+  const tagName = getTagName(currentTagId);
+  document.getElementById('headerTitle').innerHTML =
+    `#${esc(tagName)}<span class="header-title-count">(${products.length}件)</span>`;
+
+  // 検索モード中は検索バー内にヒット商品の件数を表示
+  if (query) {
+    document.getElementById('searchTotalCount').textContent = products.length + '件';
+  }
+
+  // 現在タグの cardOrder を取得（custom ソート用）
+  const curTag = allTags.find(t => t.id === currentTagId);
+  const tagSortOrder = curTag?.cardOrder || null;
+
+  products = sortProducts(products, currentSort, tagSortOrder);
+
+  if (products.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'flex';
+    if (currentCategoryFilter || query) {
+      empty.querySelector('p').textContent = '条件に一致する商品がありません';
+    } else {
+      empty.querySelector('p').innerHTML = 'このタグの商品がありません';
+    }
+    return;
+  }
+
+  empty.style.display = 'none';
+  const thumbIcon = `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+
+  // ブランド名を引けるMapを用意（タグフォルダでは商品にブランド名を併記する）
+  const brandMap = new Map(allBrands.map(b => [b.id, b.name]));
+
+  // サムネイル用のオブジェクトURLを生成してカードHTMLを組み立て
+  const cardHtmlList = await Promise.all(products.map(async (p) => {
+    let thumbHtml;
+    if (p.images?.[0]) {
+      const url = URL.createObjectURL(p.images[0]);
+      thumbHtml = `<img src="${url}" alt="" onload="URL.revokeObjectURL(this.src)">`;
+    } else {
+      thumbHtml = thumbIcon;
+    }
+    const priceText = p.price ? `¥${p.price}` : '';
+    const brandName = brandMap.get(p.brandId) || '';
+    const catParts = [p.categoryMakeup, p.categorySkincare].filter(Boolean);
+    const catText = catParts.join(' / ');
+    return `<div class="product-card" data-id="${p.id}"
+      onclick="openProduct('${p.id}')"
+      oncontextmenu="return false"
+      ontouchstart="startLongPress(event, '${p.id}')"
+      ontouchend="cancelLongPress()"
+      ontouchmove="cancelLongPress()">
+      <div class="product-thumb">${thumbHtml}</div>
+      <div class="product-info">
+        ${brandName ? `<div class="product-brand-label">${escHL(brandName, rawQuery)}</div>` : ''}
+        <div class="product-name">${escHL(p.name, rawQuery)}</div>
+        ${catText ? `<div class="product-category">${escHL(catText, rawQuery)}</div>` : ''}
+        ${priceText ? `<div class="product-price">${priceText}</div>` : ''}
+      </div>
+    </div>`;
+  }));
+
+  list.innerHTML = cardHtmlList.join('');
+}
+
 // --- 商品をタップ → 詳細画面へ ---
 function openProduct(id) {
   let productCards;
   if (currentScreen === 'brand') {
     productCards = document.querySelectorAll('#brandList .product-card');
-  } else if (currentScreen === 'products') {
+  } else if (currentScreen === 'products' || currentScreen === 'tagProducts') {
     productCards = document.querySelectorAll('#productList .product-card');
   } else {
     productCards = [];
@@ -3329,7 +3863,15 @@ async function moveToBrand(productId, brandId) {
   closeModal();
   const brandName = brandId ? allBrands.find(b => b.id === brandId)?.name : '未分類';
   toast(`「${brandName}」に移動しました`);
-  renderBrands();
+
+  // 現在の画面を再描画
+  if (currentScreen === 'tagProducts') {
+    renderTagProducts();
+  } else if (currentScreen === 'products') {
+    renderProducts();
+  } else {
+    renderBrands();
+  }
 }
 
 // ══════════════════════════════════════════
@@ -3338,18 +3880,29 @@ async function moveToBrand(productId, brandId) {
 
 // --- 並べ替えモードに入る ---
 async function enterSortMode() {
-  if (currentScreen !== 'products') return;
+  if (currentScreen !== 'products' && currentScreen !== 'tagProducts') return;
   if (isSortMode) return;
 
   await loadAllData();
 
-  const products = allProducts.filter(p => p.brandId === currentBrandId);
-  const brand = allBrands.find(b => b.id === currentBrandId);
+  // 画面に応じて対象商品と保存済み順序を取得
+  let products, savedOrder;
+  if (currentScreen === 'tagProducts') {
+    products = allProducts.filter(p =>
+      Array.isArray(p.tagIds) && p.tagIds.includes(currentTagId)
+    );
+    const tag = allTags.find(t => t.id === currentTagId);
+    savedOrder = tag?.cardOrder;
+  } else {
+    products = allProducts.filter(p => p.brandId === currentBrandId);
+    const brand = allBrands.find(b => b.id === currentBrandId);
+    savedOrder = brand?.sortOrder;
+  }
 
-  // 初期順序を構築：sortOrderがあればそれを、なければ登録日新しい順
+  // 初期順序を構築：保存済み順序があればそれを、なければ登録日新しい順
   let ordered;
-  if (brand?.sortOrder && brand.sortOrder.length > 0) {
-    const orderMap = new Map(brand.sortOrder.map((id, i) => [id, i]));
+  if (savedOrder && savedOrder.length > 0) {
+    const orderMap = new Map(savedOrder.map((id, i) => [id, i]));
     ordered = products.slice().sort((a, b) => {
       const ai = orderMap.has(a.id) ? orderMap.get(a.id) : Infinity;
       const bi = orderMap.has(b.id) ? orderMap.get(b.id) : Infinity;
@@ -3376,8 +3929,16 @@ function renderSortModeList() {
   const empty = document.getElementById('productEmpty');
   empty.style.display = 'none';
 
-  const brandProducts = allProducts.filter(p => p.brandId === currentBrandId);
-  const productMap = new Map(brandProducts.map(p => [p.id, p]));
+  // 画面に応じて対象商品をフィルタ
+  let targetProducts;
+  if (currentScreen === 'tagProducts') {
+    targetProducts = allProducts.filter(p =>
+      Array.isArray(p.tagIds) && p.tagIds.includes(currentTagId)
+    );
+  } else {
+    targetProducts = allProducts.filter(p => p.brandId === currentBrandId);
+  }
+  const productMap = new Map(targetProducts.map(p => [p.id, p]));
 
   const html = sortModeWorkingOrder.map(id => {
     const p = productMap.get(id);
@@ -3426,26 +3987,50 @@ function updateHeaderForSortMode() {
     cancelBtn.style.display = 'inline-block';
     title.textContent = '並べ替え';
   } else {
-    backBtn.style.display = 'flex';
-    tabBar.style.display = 'flex';
-    searchBar.style.display = 'block';
-    fab.style.display = 'flex';
-    settingsBtn.style.display = 'flex';
-    sortBtn.style.display = 'flex';
-    filterBtn.style.display = 'flex';
+    // 並べ替えモード解除：インラインスタイルをクリアして、
+    // CSSルールや各要素本来の表示制御ロジックに表示判断を委ねる
+    backBtn.style.display = '';
+    searchBar.style.display = '';
+    fab.style.display = '';
+    settingsBtn.style.display = '';
+    sortBtn.style.display = '';
+    filterBtn.style.display = '';
+    // 並べ替え専用ボタンは HTML側でインラインに display:none が書かれている。
+    // 空文字でクリアするとCSSルールに該当指定がなく表示されてしまうため、
+    // 明示的に 'none' を指定して非表示に戻す。
     confirmBtn.style.display = 'none';
     cancelBtn.style.display = 'none';
-    title.textContent = getBrandName(currentBrandId);
+    // タブバーはフォルダ画面（products／tagProducts）では非表示のまま、それ以外で表示
+    if (currentScreen === 'products' || currentScreen === 'tagProducts') {
+      tabBar.style.display = 'none';
+    } else {
+      tabBar.style.display = '';
+    }
+    // タイトル復帰：画面に応じて分岐（直後のrender関数で件数付きに上書きされるが暫定値）
+    if (currentScreen === 'tagProducts') {
+      title.textContent = '#' + getTagName(currentTagId);
+    } else {
+      title.textContent = getBrandName(currentBrandId);
+    }
   }
 }
 
 // --- 並べ替えを確定（DB保存） ---
 async function confirmSortMode() {
-  const brand = await dbGet('brands', currentBrandId);
-  if (brand) {
-    brand.sortOrder = [...sortModeWorkingOrder];
-    await dbPut('brands', brand);
-    await markDataUpdated();
+  if (currentScreen === 'tagProducts') {
+    const tag = await dbGet('tags', currentTagId);
+    if (tag) {
+      tag.cardOrder = [...sortModeWorkingOrder];
+      await dbPut('tags', tag);
+      await markDataUpdated();
+    }
+  } else {
+    const brand = await dbGet('brands', currentBrandId);
+    if (brand) {
+      brand.sortOrder = [...sortModeWorkingOrder];
+      await dbPut('brands', brand);
+      await markDataUpdated();
+    }
   }
 
   isSortMode = false;
@@ -3453,7 +4038,11 @@ async function confirmSortMode() {
   await loadAllData();
   currentSort = 'custom';
   updateHeaderForSortMode();
-  renderProducts();
+  if (currentScreen === 'tagProducts') {
+    renderTagProducts();
+  } else {
+    renderProducts();
+  }
   toast('並び順を保存しました');
 }
 
@@ -3462,7 +4051,11 @@ function cancelSortMode() {
   isSortMode = false;
   sortModeWorkingOrder = [];
   updateHeaderForSortMode();
-  renderProducts();
+  if (currentScreen === 'tagProducts') {
+    renderTagProducts();
+  } else {
+    renderProducts();
+  }
 }
 
 // ══════════════════════════════════════════
@@ -3740,6 +4333,7 @@ async function navigateDetailImage(direction) {
 
 // --- 商品詳細画面を描画 ---
 async function renderDetail() {
+  await loadTags(); // タグ情報を最新にする
   const p = await dbGet('products', currentProductId);
   if (!p) return;
   const rawQuery = document.getElementById('searchInput').value.trim();
@@ -3781,6 +4375,20 @@ async function renderDetail() {
   if (p.purchaseDate) html += `<span class="detail-tag">${esc(p.purchaseDate)}</span>`;
   html += `</div>`;
 
+  // --- タグチップ表示（タグが付いている商品のみ） ---
+  if (Array.isArray(p.tagIds) && p.tagIds.length > 0) {
+    const tagNames = p.tagIds
+      .map(id => allTags.find(t => t.id === id))
+      .filter(Boolean);
+    if (tagNames.length > 0) {
+      html += `<div class="detail-tag-chips">`;
+      tagNames.forEach(t => {
+        html += `<span class="detail-tag-chip">${escHL(t.name, rawQuery)}</span>`;
+      });
+      html += `</div>`;
+    }
+  }
+
   html += `<div style="margin-bottom:16px;">
     <button class="detail-copy-btn" onclick="copyAllInfo()">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
@@ -3818,6 +4426,12 @@ async function copyAllInfo() {
   if (p.volume) lines.push(`容量：${p.volume}`);
   if (p.price) lines.push(`価格：¥${p.price}`);
   if (p.purchaseDate) lines.push(`購入時期：${p.purchaseDate}`);
+  if (Array.isArray(p.tagIds) && p.tagIds.length > 0) {
+    const tagNames = p.tagIds
+      .map(id => allTags.find(t => t.id === id)?.name)
+      .filter(Boolean);
+    if (tagNames.length > 0) lines.push(`タグ：${tagNames.join('、')}`);
+  }
   if (p.ingredients) lines.push(`\n全成分：\n${p.ingredients}`);
   if (p.memo) lines.push(`\nメモ：\n${p.memo}`);
   doCopy(lines.join('\n'));
@@ -3875,6 +4489,18 @@ async function deleteProduct() {
       await dbPut('brands', brand);
     }
   }
+
+  // 削除対象の商品が持っていたタグの cardOrder からも除外
+  if (Array.isArray(product?.tagIds) && product.tagIds.length > 0) {
+    for (const tagId of product.tagIds) {
+      const tag = await dbGet('tags', tagId);
+      if (tag && Array.isArray(tag.cardOrder)) {
+        tag.cardOrder = tag.cardOrder.filter(id => id !== currentProductId);
+        await dbPut('tags', tag);
+      }
+    }
+  }
+
   await dbDelete('products', currentProductId);
   await markDataUpdated();
   closeModal();
@@ -3886,6 +4512,145 @@ async function deleteProduct() {
 /* ══════════════════════════════════════════
    #FORM_JS 商品フォームロジック
    ══════════════════════════════════════════ */
+
+// --- タグ選択中のID配列（フォーム内で保持） ---
+let selectedTagIds = [];
+
+// --- タグ選択モーダル内の作業用バッファ（モーダル内のチェック状態） ---
+let tagPickBuffer = [];
+
+// --- タグチップを描画（選択中タグ） ---
+function renderFormTagChips() {
+  const container = document.getElementById('formTagChips');
+  if (!container) return;
+  const xSvg = `<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+  let html = '';
+  selectedTagIds.forEach(tagId => {
+    const tag = allTags.find(t => t.id === tagId);
+    if (!tag) return; // 万一存在しないタグはスキップ
+    html += `
+      <div class="form-tag-chip">
+        <span>${esc(tag.name)}</span>
+        <button type="button" onclick="removeFormTag('${tag.id}')">${xSvg}</button>
+      </div>`;
+  });
+  container.innerHTML = html;
+  updateTagTriggerLabel();
+}
+
+// --- タグ選択ボタンのラベルを更新（選択件数表示） ---
+function updateTagTriggerLabel() {
+  const label = document.getElementById('formTagTriggerLabel');
+  if (!label) return;
+  if (selectedTagIds.length === 0) {
+    label.textContent = 'タグを選択';
+    label.style.color = '';
+  } else {
+    label.textContent = `${selectedTagIds.length}件選択中`;
+    label.style.color = 'var(--text)';
+  }
+}
+
+// --- タグチップの×ボタンで外す ---
+function removeFormTag(tagId) {
+  selectedTagIds = selectedTagIds.filter(id => id !== tagId);
+  renderFormTagChips();
+}
+
+// --- タグ選択モーダルを開く ---
+function openTagPickModal() {
+  // 現在の選択状態をバッファにコピー（キャンセル時はバッファごと破棄）
+  tagPickBuffer = [...selectedTagIds];
+  showModal({
+    title: 'タグを選択',
+    content: `<div class="tag-pick-list" id="tagPickList"></div>`,
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '完了', cls: 'modal-primary', action: applyTagPick }
+    ]
+  });
+  renderTagPickList();
+}
+
+// --- タグ選択モーダル内のリストを描画 ---
+function renderTagPickList() {
+  const container = document.getElementById('tagPickList');
+  if (!container) return;
+  if (allTags.length === 0) {
+    container.innerHTML = '<div class="tag-pick-empty">タグが登録されていません</div>';
+    return;
+  }
+  const checkSvg = `<svg viewBox="0 0 24 24"><polyline points="5 12 10 17 19 7"/></svg>`;
+  let html = '';
+  allTags.forEach(t => {
+    const checked = tagPickBuffer.includes(t.id);
+    html += `
+      <button type="button" class="tag-pick-item ${checked ? 'checked' : ''}" onclick="toggleTagPick('${t.id}')">
+        <span class="tag-pick-check">${checkSvg}</span>
+        <span class="tag-pick-name">${esc(t.name)}</span>
+      </button>`;
+  });
+  container.innerHTML = html;
+}
+
+// --- タグ選択モーダル内でタグのチェックをトグル ---
+function toggleTagPick(tagId) {
+  if (tagPickBuffer.includes(tagId)) {
+    tagPickBuffer = tagPickBuffer.filter(id => id !== tagId);
+  } else {
+    tagPickBuffer.push(tagId);
+  }
+  renderTagPickList();
+}
+
+// --- 「完了」ボタンでバッファを実際の選択状態に反映 ---
+function applyTagPick() {
+  selectedTagIds = [...tagPickBuffer];
+  closeModal();
+  renderFormTagChips();
+}
+
+// --- 新規タグ追加モーダル（フォーム画面用） ---
+function openAddTagModalForForm() {
+  showModal({
+    title: 'タグを追加',
+    content: '<input type="text" class="modal-input" id="newTagFormInput" placeholder="タグ名を入力" maxlength="30" autocomplete="off">',
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '追加', cls: 'modal-primary', action: addTagFromForm }
+    ]
+  });
+  setTimeout(() => {
+    const input = document.getElementById('newTagFormInput');
+    if (input) input.focus();
+  }, 100);
+}
+
+// --- フォーム内からタグを追加して即選択状態にする ---
+async function addTagFromForm() {
+  const input = document.getElementById('newTagFormInput');
+  const name = input ? input.value.trim() : '';
+  if (!name) { toast('タグ名を入力してください'); return; }
+  if (allTags.some(t => t.name === name)) {
+    toast('同じ名前のタグが既にあります');
+    return;
+  }
+  const maxOrder = allTags.reduce((max, t) => Math.max(max, t.order ?? 0), -1);
+  const newTag = {
+    id: genId(),
+    name,
+    order: maxOrder + 1,
+    cardOrder: [],
+    createdAt: new Date().toISOString()
+  };
+  await dbPut('tags', newTag);
+  await markDataUpdated();
+  await loadTags();
+  selectedTagIds.push(newTag.id);
+  closeModal();
+  renderFormTagChips();
+  toast(`「${name}」を追加しました`);
+}
 
 // --- カテゴリ選択肢を更新（グループ別に2つのドロップダウンへ） ---
 function refreshCategorySelects(selectedMakeup, selectedSkincare) {
@@ -3962,16 +4727,206 @@ async function addCategoryFromForm(group) {
   toast(`「${name}」を追加しました`);
 }
 
-// --- ブランド選択肢を生成（新規ブランド作成・未分類・登録済みの順） ---
+// --- ブランド名のグループキーを判定（'A-Z' または 'あ'〜'わ'、その他） ---
+function getBrandGroupKey(name) {
+  if (!name) return 'その他';
+  const code = name.charCodeAt(0);
+
+  // ASCII印字可能文字（記号・数字・アルファベット）→ A-Z
+  if (code >= 0x21 && code <= 0x7E) return 'A-Z';
+  // 全角英数字 → A-Z
+  if ((code >= 0xFF10 && code <= 0xFF19) ||
+      (code >= 0xFF21 && code <= 0xFF3A) ||
+      (code >= 0xFF41 && code <= 0xFF5A)) return 'A-Z';
+
+  // ひらがなはカタカナに正規化してから判定
+  let kc = code;
+  if (code >= 0x3041 && code <= 0x3096) kc = code + 0x60;
+
+  if (kc >= 0x30A1 && kc <= 0x30AA) return 'あ';
+  if (kc >= 0x30AB && kc <= 0x30B4) return 'か';
+  if (kc >= 0x30B5 && kc <= 0x30BE) return 'さ';
+  if (kc >= 0x30BF && kc <= 0x30C9) return 'た';
+  if (kc >= 0x30CA && kc <= 0x30CE) return 'な';
+  if (kc >= 0x30CF && kc <= 0x30DD) return 'は';
+  if (kc >= 0x30DE && kc <= 0x30E2) return 'ま';
+  if (kc >= 0x30E3 && kc <= 0x30E8) return 'や';
+  if (kc >= 0x30E9 && kc <= 0x30ED) return 'ら';
+  if (kc >= 0x30EE && kc <= 0x30F2) return 'わ';
+
+  // 漢字など → その他
+  return 'その他';
+}
+
+// --- ブランド名のグループ内ソートキー（記号→数字→アルファベット→五十音順） ---
+function getBrandSortKey(name) {
+  if (!name) return '\uFFFF';
+  const code = name.charCodeAt(0);
+
+  // 記号（ASCII印字可能記号）
+  if ((code >= 0x21 && code <= 0x2F) ||
+      (code >= 0x3A && code <= 0x40) ||
+      (code >= 0x5B && code <= 0x60) ||
+      (code >= 0x7B && code <= 0x7E)) {
+    return '0_' + name.toLowerCase();
+  }
+  // 数字（半角・全角）
+  if ((code >= 0x30 && code <= 0x39) ||
+      (code >= 0xFF10 && code <= 0xFF19)) {
+    return '1_' + name.toLowerCase();
+  }
+  // アルファベット（半角・全角）
+  if ((code >= 0x41 && code <= 0x5A) || (code >= 0x61 && code <= 0x7A) ||
+      (code >= 0xFF21 && code <= 0xFF3A) || (code >= 0xFF41 && code <= 0xFF5A)) {
+    return '2_' + name.toLowerCase();
+  }
+
+  // ひらがな・カタカナ：カタカナに正規化して比較
+  let normalized = '';
+  for (const c of name) {
+    const cc = c.charCodeAt(0);
+    if (cc >= 0x3041 && cc <= 0x3096) {
+      normalized += String.fromCharCode(cc + 0x60);
+    } else {
+      normalized += c;
+    }
+  }
+  return '3_' + normalized;
+}
+
+// --- ブランド選択モーダル用のバッファ（モーダル内の選択状態） ---
+let brandPickBuffer = '';
+
+// --- ブランド選択肢を更新（hidden selectのvalue保持＋トリガーラベル更新） ---
 function refreshBrandSelect(selectedValue) {
   const sel = document.getElementById('formBrand');
-  sel.innerHTML = '';
-  sel.innerHTML += '<option value="__new__">＋ 新規ブランドを作成</option>';
-  sel.innerHTML += '<option value="">ブランドなし（未分類）</option>';
+  if (!sel) return;
+  // hidden selectには、値保持のために最低限のoptionだけ生成
+  let html = '<option value=""></option>';
   allBrands.forEach(b => {
-    sel.innerHTML += `<option value="${b.id}">${esc(b.name)}</option>`;
+    html += `<option value="${b.id}"></option>`;
   });
-  if (selectedValue !== undefined) sel.value = selectedValue;
+  sel.innerHTML = html;
+  if (selectedValue !== undefined && selectedValue !== '__new__') {
+    sel.value = selectedValue;
+  }
+  updateBrandTriggerLabel();
+}
+
+// --- ブランド選択トリガーボタンのラベルを更新 ---
+function updateBrandTriggerLabel() {
+  const sel = document.getElementById('formBrand');
+  const label = document.getElementById('formBrandLabel');
+  if (!sel || !label) return;
+  const v = sel.value;
+  if (!v) {
+    label.textContent = 'ブランドなし（未分類）';
+  } else {
+    const brand = allBrands.find(b => b.id === v);
+    label.textContent = brand ? brand.name : 'ブランドなし（未分類）';
+  }
+}
+
+// --- ブランド選択モーダルを開く ---
+function openBrandPickModal() {
+  const sel = document.getElementById('formBrand');
+  brandPickBuffer = sel ? (sel.value || '') : '';
+  showModal({
+    title: 'ブランドを選択',
+    content: `<div class="brand-pick-list" id="brandPickList"></div>`,
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '完了', cls: 'modal-primary', action: applyBrandPick }
+    ]
+  });
+  renderBrandPickList();
+}
+
+// --- ブランド選択モーダル内のリストを描画 ---
+function renderBrandPickList() {
+  const container = document.getElementById('brandPickList');
+  if (!container) return;
+
+  // ブランドをグループに振り分け
+  const grouped = {};
+  allBrands.forEach(b => {
+    const key = getBrandGroupKey(b.name);
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(b);
+  });
+
+  // 各グループ内をソート
+  Object.values(grouped).forEach(arr => {
+    arr.sort((a, b) => {
+      const ka = getBrandSortKey(a.name);
+      const kb = getBrandSortKey(b.name);
+      return ka < kb ? -1 : ka > kb ? 1 : 0;
+    });
+  });
+
+  let html = '';
+
+  // ＋新規ブランドを作成
+  html += `<button type="button" class="brand-pick-item brand-pick-action" onclick="onBrandPickNew()">
+    <span class="brand-pick-radio"></span>
+    <span class="brand-pick-name">＋ 新規ブランドを作成</span>
+  </button>`;
+
+  // ブランドなし（未分類）
+  const noneSelected = brandPickBuffer === '';
+  html += `<button type="button" class="brand-pick-item ${noneSelected ? 'selected' : ''}" onclick="selectBrandPick('')">
+    <span class="brand-pick-radio"></span>
+    <span class="brand-pick-name">ブランドなし（未分類）</span>
+  </button>`;
+
+  // グループ別
+  const GROUP_ORDER = ['A-Z', 'あ', 'か', 'さ', 'た', 'な', 'は', 'ま', 'や', 'ら', 'わ', 'その他'];
+  GROUP_ORDER.forEach(groupKey => {
+    const arr = grouped[groupKey];
+    if (!arr || arr.length === 0) return;
+    const label = groupKey === 'A-Z' ? 'A〜Z' : groupKey;
+    html += `<div class="brand-pick-header">${label}</div>`;
+    arr.forEach(b => {
+      const selected = brandPickBuffer === b.id;
+      html += `<button type="button" class="brand-pick-item ${selected ? 'selected' : ''}" onclick="selectBrandPick('${b.id}')">
+        <span class="brand-pick-radio"></span>
+        <span class="brand-pick-name">${esc(b.name)}</span>
+      </button>`;
+    });
+  });
+
+  container.innerHTML = html;
+}
+
+// --- ブランド選択モーダル内で項目をタップ ---
+function selectBrandPick(brandId) {
+  brandPickBuffer = brandId;
+  renderBrandPickList();
+}
+
+// --- 「＋ 新規ブランドを作成」をタップ ---
+function onBrandPickNew() {
+  closeModal();
+  showModal({
+    title: 'ブランドを追加',
+    content: '<input class="modal-input" id="modalBrandInput" placeholder="ブランド名を入力" autocomplete="off">',
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '追加', cls: 'modal-ok', action: addBrandFromForm }
+    ]
+  });
+  setTimeout(() => {
+    const inp = document.getElementById('modalBrandInput');
+    if (inp) inp.focus();
+  }, 100);
+}
+
+// --- 「完了」ボタンでバッファを実際の選択状態に反映 ---
+function applyBrandPick() {
+  const sel = document.getElementById('formBrand');
+  if (sel) sel.value = brandPickBuffer;
+  closeModal();
+  updateBrandTriggerLabel();
 }
 
 // --- ブランドセレクトで「新規ブランドを作成」を選んだ時 ---
@@ -4014,9 +4969,11 @@ async function addBrandFromForm() {
 async function openProductForm(productId) {
   editingProductId = productId;
   formImages = [];
+  selectedTagIds = []; // タグも初期化
 
   await loadAllData();
   await loadCategories();
+  await loadTags(); // タグ一覧を読み込み
   refreshCategorySelects('', '');
 
   document.getElementById('formName').value = '';
@@ -4040,12 +4997,16 @@ async function openProductForm(productId) {
       if (p.images?.length > 0) {
         formImages = [...p.images];
       }
+      // 既存商品のタグを読み込み（未設定のレガシー商品は空配列扱い）
+      selectedTagIds = Array.isArray(p.tagIds) ? [...p.tagIds] : [];
     }
   } else {
-    refreshBrandSelect(currentBrandId || '');
+    // 新規登録時はブランドを毎回「ブランドなし（未分類）」にリセット
+    refreshBrandSelect('');
   }
 
   renderFormImageGrid();
+  renderFormTagChips();
   showScreen('form');
 }
 
@@ -4134,6 +5095,12 @@ async function autoSaveProduct() {
   const productId = editingProductId || genId();
   const wasEditing = !!editingProductId;
 
+  // 編集前の商品を取得（タグ変更判定用）
+  let oldProduct = null;
+  if (wasEditing) {
+    oldProduct = await dbGet('products', productId);
+  }
+
   const data = {
     id: productId,
     brandId,
@@ -4148,13 +5115,39 @@ async function autoSaveProduct() {
     memo: document.getElementById('formMemo').value.trim(),
     image: formImages[0] || null,
     images: formImages.length > 0 ? [...formImages] : [],
+    tagIds: [...selectedTagIds],
     createdAt: wasEditing
-      ? (await dbGet('products', productId))?.createdAt || new Date().toISOString()
+      ? oldProduct?.createdAt || new Date().toISOString()
       : new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
 
   await dbPut('products', data);
+
+  // --- タグ cardOrder の同期 ---
+  const oldTagIds = Array.isArray(oldProduct?.tagIds) ? oldProduct.tagIds : [];
+  const newTagIds = selectedTagIds;
+  const addedTagIds = newTagIds.filter(id => !oldTagIds.includes(id));
+  const removedTagIds = oldTagIds.filter(id => !newTagIds.includes(id));
+
+  for (const tagId of addedTagIds) {
+    const tag = await dbGet('tags', tagId);
+    if (tag) {
+      tag.cardOrder = Array.isArray(tag.cardOrder) ? tag.cardOrder : [];
+      if (!tag.cardOrder.includes(productId)) {
+        tag.cardOrder.push(productId);
+        await dbPut('tags', tag);
+      }
+    }
+  }
+  for (const tagId of removedTagIds) {
+    const tag = await dbGet('tags', tagId);
+    if (tag && Array.isArray(tag.cardOrder)) {
+      tag.cardOrder = tag.cardOrder.filter(id => id !== productId);
+      await dbPut('tags', tag);
+    }
+  }
+
   await markDataUpdated();
   toast(wasEditing ? '商品を更新しました' : '商品を登録しました');
 
@@ -4174,7 +5167,7 @@ async function submitProduct() {
 
   const productId = editingProductId || genId();
 
-  // 編集前の商品を取得（ブランド変更判定用）
+  // 編集前の商品を取得（ブランド・タグ変更判定用）
   let oldProduct = null;
   if (editingProductId) {
     oldProduct = await dbGet('products', editingProductId);
@@ -4194,6 +5187,7 @@ async function submitProduct() {
     memo: document.getElementById('formMemo').value.trim(),
     image: formImages[0] || null,
     images: formImages.length > 0 ? [...formImages] : [],
+    tagIds: [...selectedTagIds],
     createdAt: editingProductId
       ? oldProduct?.createdAt || new Date().toISOString()
       : new Date().toISOString(),
@@ -4202,7 +5196,7 @@ async function submitProduct() {
 
   await dbPut('products', data);
 
-  // --- sortOrder の同期 ---
+  // --- ブランド sortOrder の同期 ---
   const oldBrandId = oldProduct?.brandId ?? null;
   const brandChanged = oldBrandId !== brandId;
 
@@ -4230,6 +5224,31 @@ async function submitProduct() {
         newBrand.sortOrder.push(productId);
         await dbPut('brands', newBrand);
       }
+    }
+  }
+
+  // --- タグ cardOrder の同期 ---
+  // 新しく付いたタグの cardOrder には末尾に追加、外したタグの cardOrder からは除外
+  const oldTagIds = Array.isArray(oldProduct?.tagIds) ? oldProduct.tagIds : [];
+  const newTagIds = selectedTagIds;
+  const addedTagIds = newTagIds.filter(id => !oldTagIds.includes(id));
+  const removedTagIds = oldTagIds.filter(id => !newTagIds.includes(id));
+
+  for (const tagId of addedTagIds) {
+    const tag = await dbGet('tags', tagId);
+    if (tag) {
+      tag.cardOrder = Array.isArray(tag.cardOrder) ? tag.cardOrder : [];
+      if (!tag.cardOrder.includes(productId)) {
+        tag.cardOrder.push(productId);
+        await dbPut('tags', tag);
+      }
+    }
+  }
+  for (const tagId of removedTagIds) {
+    const tag = await dbGet('tags', tagId);
+    if (tag && Array.isArray(tag.cardOrder)) {
+      tag.cardOrder = tag.cardOrder.filter(id => id !== productId);
+      await dbPut('tags', tag);
     }
   }
 
@@ -4302,11 +5321,12 @@ function getFilteredSortedMemos() {
   const query = document.getElementById('searchInput').value.trim().toLowerCase();
   let memos = allMemos;
 
-  // 検索フィルタ
+  // 検索フィルタ（AND検索）
   if (query) {
+    const queries = splitQuery(query);
     memos = memos.filter(m => {
       const text = [m.title, m.body].join(' ').toLowerCase();
-      return text.includes(query);
+      return matchesAllQueries(text, queries);
     });
   }
 
@@ -4340,10 +5360,9 @@ async function renderMemos() {
 
   const memos = getFilteredSortedMemos();
 
-  // 検索中はヒット箇所の総数を検索バー内に表示
+  // 検索中はヒットしたメモの件数を表示
   if (rawQuery) {
-    const hitCount = memos.reduce((sum, m) => sum + countMemoHits(m, rawQuery), 0);
-    document.getElementById('searchTotalCount').textContent = hitCount + '件';
+    document.getElementById('searchTotalCount').textContent = memos.length + '件';
   }
 
   // 0件時の表示
@@ -4605,11 +5624,31 @@ function countHits(text, query) {
   return count;
 }
 
-// --- 1つの商品データ内のヒット箇所数を計算（全フィールド合計） ---
+// --- クエリをスペース(半角・全角)で分割し、空要素を除いた配列を返す ---
+function splitQuery(rawQuery) {
+  if (!rawQuery) return [];
+  return String(rawQuery).split(/[\s　]+/).filter(Boolean);
+}
+
+// --- text内に queries の全単語が含まれるか(AND検索, 大文字小文字無視) ---
+function matchesAllQueries(text, queries) {
+  if (!queries || queries.length === 0) return true;
+  const lowerText = String(text || '').toLowerCase();
+  return queries.every(q => lowerText.includes(String(q).toLowerCase()));
+}
+
+// --- 1つの商品データ内のヒット箇所数を計算（全フィールド合計、ブランド名も対象、複数単語対応） ---
 function countProductHits(product, query) {
   if (!product) return 0;
+  const queries = splitQuery(query);
+  if (queries.length === 0) return 0;
+
+  const brand = allBrands.find(b => b.id === product.brandId);
+  const brandName = brand ? brand.name : '';
+
   const fields = [
     product.name,
+    brandName,
     product.categoryMakeup,
     product.categorySkincare,
     product.ingredients,
@@ -4617,13 +5656,21 @@ function countProductHits(product, query) {
     product.volume,
     product.price
   ];
-  return fields.reduce((sum, f) => sum + countHits(f, query), 0);
+
+  // 各単語のヒット数をフィールド全体で合計
+  return queries.reduce((total, q) => {
+    return total + fields.reduce((sum, f) => sum + countHits(f, q), 0);
+  }, 0);
 }
 
-// --- 1つのメモデータ内のヒット箇所数を計算（タイトル＋本文） ---
+// --- 1つのメモデータ内のヒット箇所数を計算（タイトル＋本文、複数単語対応） ---
 function countMemoHits(memo, query) {
   if (!memo) return 0;
-  return countHits(memo.title, query) + countHits(memo.body, query);
+  const queries = splitQuery(query);
+  if (queries.length === 0) return 0;
+  return queries.reduce((total, q) => {
+    return total + countHits(memo.title, q) + countHits(memo.body, q);
+  }, 0);
 }
 
 // --- 詳細画面用：現在の対象データのヒット数を検索バー内に表示 ---
@@ -4762,12 +5809,13 @@ function onSearch() {
 function clearSearch() {
   document.getElementById('searchInput').value = '';
   document.getElementById('searchClear').classList.remove('show');
+  document.getElementById('searchTotalCount').textContent = '';
   onSearch();
 }
 
 
 /* ══════════════════════════════════════════
-   #SETTINGS_JS 設定画面（バックアップ＋カテゴリ管理）
+   #SETTINGS_JS 設定画面(バックアップ＋カテゴリ管理)
    ══════════════════════════════════════════ */
 
 // ===== バックアップ処理 =====
@@ -4818,7 +5866,7 @@ function base64ToBlob(base64) {
   return new Blob([array], { type: mime });
 }
 
-// --- エクスポート（JSONファイルとしてダウンロード、画像はBase64に変換して含める） ---
+// --- エクスポート(JSONファイルとしてダウンロード、画像はBase64に変換して含める) ---
 async function exportData() {
   await loadAllData();
   await loadCategories();
@@ -4834,12 +5882,13 @@ async function exportData() {
   }));
 
   const data = {
-    version: 3,
+    version: 4,
     exportedAt: new Date().toISOString(),
     brands: allBrands,
     products: productsForExport,
     memos: allMemos,
-    categories: allCategories
+    categories: allCategories,
+    tags: allTags
   };
 
   const json = JSON.stringify(data, null, 2);
@@ -4877,7 +5926,7 @@ function onImportSelected(e) {
   }, 300);
 }
 
-// --- インポート実行（Base64画像をBlobに変換してDBに保存） ---
+// --- インポート実行(Base64画像をBlobに変換してDBに保存) ---
 async function doImport(file) {
   try {
     const text = await file.text();
@@ -4895,6 +5944,7 @@ async function doImport(file) {
     await dbClear('products');
     await dbClear('memos');
     await dbClear('categories');
+    await dbClear('tags');
 
     for (const b of data.brands) await dbPut('brands', b);
 
@@ -4910,7 +5960,16 @@ async function doImport(file) {
       }
     }
 
-    // 商品読み込み（Base64画像をBlobに変換、旧形式のcategoryも変換）
+    // タグ読み込み(v4以降のバックアップにのみ含まれる)
+    const importedTagIds = new Set();
+    if (Array.isArray(data.tags)) {
+      for (const t of data.tags) {
+        await dbPut('tags', t);
+        importedTagIds.add(t.id);
+      }
+    }
+
+    // 商品読み込み(Base64画像をBlobに変換、旧形式のcategoryも変換)
     for (const p of data.products) {
       if (p.category !== undefined && p.categoryMakeup === undefined && p.categorySkincare === undefined) {
         const cat = importedCats.find(c => c.name === p.category);
@@ -4935,6 +5994,13 @@ async function doImport(file) {
       // Base64文字列をBlobに変換
       p.images = p.images.map(img => base64ToBlob(img)).filter(Boolean);
       p.image = p.images[0] || null;
+
+      // tagIds の復元(v4以降。レガシー商品は空配列。存在しないタグIDは除外)
+      if (!Array.isArray(p.tagIds)) {
+        p.tagIds = [];
+      } else {
+        p.tagIds = p.tagIds.filter(id => importedTagIds.has(id));
+      }
 
       await dbPut('products', p);
     }
@@ -4966,7 +6032,7 @@ async function loadCategories() {
   allCategories.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
 }
 
-// --- カテゴリ1行分のHTMLを生成（内部用） ---
+// --- カテゴリ1行分のHTMLを生成(内部用) ---
 function renderCatItem(cat, count, isFirst, isLast) {
   return `
     <div class="cat-item">
@@ -4983,7 +6049,7 @@ function renderCatItem(cat, count, isFirst, isLast) {
     </div>`;
 }
 
-// --- カテゴリ一覧の描画（設定画面内、グループ別表示） ---
+// --- カテゴリ一覧の描画(設定画面内、グループ別表示) ---
 async function renderCategoryList() {
   await loadCategories();
   await loadAllData();
@@ -5021,7 +6087,7 @@ async function renderCategoryList() {
   container.innerHTML = html;
 }
 
-// --- カテゴリ追加モーダル（設定画面用） ---
+// --- カテゴリ追加モーダル(設定画面用) ---
 function showAddCategoryModalInSettings(group) {
   const groupLabel = group === 'skincare' ? 'スキンケア' : 'メイク';
   showModal({
@@ -5038,7 +6104,7 @@ function showAddCategoryModalInSettings(group) {
   }, 100);
 }
 
-// --- カテゴリ追加の実行（設定画面用） ---
+// --- カテゴリ追加の実行(設定画面用) ---
 async function addCategory(group) {
   const input = document.getElementById('catInput');
   const name = input?.value.trim();
@@ -5190,8 +6256,9 @@ async function openSettingsModal() {
   await checkBackupReminder();
 
   // 「アイテムカードを並べ替える」ボタンの有効・無効
+  // 商品一覧画面（ブランドフォルダ／タグフォルダ）のときのみ有効
   const sortMenuItem = document.getElementById('settingsMenuSort');
-  if (currentScreen === 'products') {
+  if (currentScreen === 'products' || currentScreen === 'tagProducts') {
     sortMenuItem.classList.remove('disabled');
   } else {
     sortMenuItem.classList.add('disabled');
@@ -5205,7 +6272,7 @@ function closeSettingsModal() {
   document.getElementById('settingsModal').classList.remove('show');
 }
 
-// --- 背景タップで閉じる（本体クリックは伝播停止済み） ---
+// --- 背景タップで閉じる(本体クリックは伝播停止済み) ---
 function closeSettingsModalOnBackdrop(e) {
   if (e.target === e.currentTarget) {
     closeSettingsModal();
@@ -5230,6 +6297,12 @@ function openCategoryManage() {
 function openBrandManage() {
   closeSettingsModal();
   showScreen('brandManage');
+}
+
+// --- タグ管理画面へ遷移 ---
+function openTagManage() {
+  closeSettingsModal();
+  showScreen('tagManage');
 }
 
 // ===== ブランド管理 =====
@@ -5303,12 +6376,12 @@ async function updateBrandName(brandId) {
   renderBrandManageList();
 }
 
-// --- ブランド削除モーダル（ブランド管理画面用） ---
+// --- ブランド削除モーダル(ブランド管理画面用) ---
 function showDeleteBrandModalFromManage(brandId) {
   const brand = allBrands.find(b => b.id === brandId);
   if (!brand) return;
   const count = allProducts.filter(p => p.brandId === brandId).length;
-  const countText = count > 0 ? `（商品${count}件も削除されます）` : '';
+  const countText = count > 0 ? `(商品${count}件も削除されます)` : '';
   showModal({
     title: brand.name,
     content: `<p style="font-size:14px; color:var(--text-light); margin:0;">このブランドを削除しますか？${countText}</p>`,
@@ -5319,7 +6392,7 @@ function showDeleteBrandModalFromManage(brandId) {
   });
 }
 
-// --- ブランド削除の実行（ブランド管理画面用） ---
+// --- ブランド削除の実行(ブランド管理画面用) ---
 async function deleteBrandFromManage(brandId) {
   const products = allProducts.filter(p => p.brandId === brandId);
   for (const p of products) {
@@ -5331,6 +6404,161 @@ async function deleteBrandFromManage(brandId) {
   toast('ブランドを削除しました');
   renderBrandManageList();
 }
+
+// ===== タグ管理 =====
+
+// --- タグ一覧の読み込み ---
+async function loadTags() {
+  allTags = await dbGetAll('tags');
+  allTags.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+}
+
+// --- タグ管理一覧を描画 ---
+async function renderTagManageList() {
+  await loadTags();
+  await loadAllData();
+  const container = document.getElementById('tagManageList');
+
+  if (allTags.length === 0) {
+    container.innerHTML = '<div style="font-size:13px;color:var(--text-lighter);padding:12px 0;">タグが登録されていません</div>';
+    return;
+  }
+
+  let html = '';
+  for (const t of allTags) {
+    const count = allProducts.filter(p => (p.tagIds || []).includes(t.id)).length;
+    html += `
+    <div class="cat-item">
+      <div class="cat-item-name">${esc(t.name)}</div>
+      <div class="cat-item-count">${count}件</div>
+      <button class="cat-item-btn" onclick="showEditTagModal('${t.id}')" title="編集">
+        <svg viewBox="0 0 24 24"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+      </button>
+      <button class="cat-item-btn delete" onclick="showDeleteTagModal('${t.id}')" title="削除">
+        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+      </button>
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+// --- タグ追加モーダル ---
+function showAddTagModal() {
+  showModal({
+    title: 'タグを追加',
+    content: '<input type="text" class="modal-input" id="tagInput" placeholder="タグ名を入力" maxlength="30">',
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '追加', cls: 'modal-primary', action: addTag }
+    ]
+  });
+  setTimeout(() => {
+    const input = document.getElementById('tagInput');
+    if (input) input.focus();
+  }, 100);
+}
+
+// --- タグ追加の実行 ---
+async function addTag() {
+  const input = document.getElementById('tagInput');
+  const name = input?.value.trim();
+  if (!name) {
+    toast('タグ名を入力してください');
+    return;
+  }
+  if (allTags.some(t => t.name === name)) {
+    toast('同じ名前のタグが既にあります');
+    return;
+  }
+  const maxOrder = allTags.reduce((max, t) => Math.max(max, t.order ?? 0), -1);
+  await dbPut('tags', {
+    id: genId(),
+    name,
+    order: maxOrder + 1,
+    cardOrder: [],
+    createdAt: new Date().toISOString()
+  });
+  await markDataUpdated();
+  closeModal();
+  toast('タグを追加しました');
+  renderTagManageList();
+}
+
+// --- タグ編集モーダル ---
+function showEditTagModal(tagId) {
+  const tag = allTags.find(t => t.id === tagId);
+  if (!tag) return;
+  showModal({
+    title: 'タグ名を編集',
+    content: `<input type="text" class="modal-input" id="tagEditInput" value="${esc(tag.name)}" maxlength="30">`,
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '保存', cls: 'modal-primary', action: () => updateTag(tagId) }
+    ]
+  });
+  setTimeout(() => {
+    const input = document.getElementById('tagEditInput');
+    if (input) { input.focus(); input.select(); }
+  }, 100);
+}
+
+// --- タグ編集の実行 ---
+async function updateTag(tagId) {
+  const input = document.getElementById('tagEditInput');
+  const newName = input?.value.trim();
+  if (!newName) {
+    toast('タグ名を入力してください');
+    return;
+  }
+  const tag = allTags.find(t => t.id === tagId);
+  if (!tag) return;
+  if (allTags.some(t => t.id !== tagId && t.name === newName)) {
+    toast('同じ名前のタグが既にあります');
+    return;
+  }
+  tag.name = newName;
+  await dbPut('tags', tag);
+  await markDataUpdated();
+  closeModal();
+  toast('タグ名を更新しました');
+  renderTagManageList();
+}
+
+// --- タグ削除モーダル ---
+function showDeleteTagModal(tagId) {
+  const tag = allTags.find(t => t.id === tagId);
+  if (!tag) return;
+  const count = allProducts.filter(p => (p.tagIds || []).includes(tagId)).length;
+  let msg = `「${esc(tag.name)}」を削除しますか？`;
+  if (count > 0) {
+    msg += `<br><br><span style="color:var(--accent);font-size:13px;">この操作により、このタグを使用中の ${count} 件のカードからタグが外れます。</span>`;
+  }
+  showModal({
+    title: 'タグを削除',
+    content: msg,
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '削除する', cls: 'modal-danger', action: () => deleteTag(tagId) }
+    ]
+  });
+}
+
+// --- タグ削除の実行 ---
+async function deleteTag(tagId) {
+  await loadAllData();
+  for (const p of allProducts) {
+    if (p.tagIds && p.tagIds.includes(tagId)) {
+      p.tagIds = p.tagIds.filter(id => id !== tagId);
+      await dbPut('products', p);
+    }
+  }
+  await dbDelete('tags', tagId);
+  await markDataUpdated();
+  closeModal();
+  toast('タグを削除しました');
+  renderTagManageList();
+}
+
 
 /* ══════════════════════════════════════════
    #MODAL_JS モーダル制御
@@ -5495,14 +6723,21 @@ function esc(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// --- HTMLエスケープ＋検索ハイライト ---
+// --- HTMLエスケープ＋検索ハイライト（複数単語対応） ---
 function escHL(s, query) {
   if (!s) return '';
   const escaped = esc(s);
-  if (!query) return escaped;
-  const eq = esc(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  if (!eq) return escaped;
-  return escaped.replace(new RegExp(`(${eq})`, 'gi'), '<mark class="hl">$1</mark>');
+  const queries = splitQuery(query);
+  if (queries.length === 0) return escaped;
+
+  // 全単語を正規表現用にエスケープしてOR連結
+  const escapedQueries = queries
+    .map(q => esc(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .filter(Boolean);
+  if (escapedQueries.length === 0) return escaped;
+
+  const pattern = `(${escapedQueries.join('|')})`;
+  return escaped.replace(new RegExp(pattern, 'gi'), '<mark class="hl">$1</mark>');
 }
 
 
