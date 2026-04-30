@@ -2805,8 +2805,12 @@ function onFabClick() {
   if (currentTab === 'card') {
     if (currentScreen === 'brand') {
       showFabMenu();             // 新規カード or 新規ブランド選択
-    } else if (currentScreen === 'products' || currentScreen === 'tagProducts') {
-      openProductForm(null);     // 商品新規登録フォーム
+    } else if (currentScreen === 'products') {
+      // ブランド画面内の追加 → 開いているブランドを初期値にする
+      openProductForm(null, currentBrandId || '');
+    } else if (currentScreen === 'tagProducts') {
+      // タグ画面の追加 → ブランドはリセット
+      openProductForm(null);
     }
   } else {
     openMemoForm(null);          // メモ新規登録フォーム
@@ -4966,7 +4970,8 @@ async function addBrandFromForm() {
 }
 
 // --- 商品フォームを開く（新規 or 編集） ---
-async function openProductForm(productId) {
+// 第2引数 defaultBrandId: 新規登録時のブランド初期値。省略時は ''（未分類）にリセット。
+async function openProductForm(productId, defaultBrandId = '') {
   editingProductId = productId;
   formImages = [];
   selectedTagIds = []; // タグも初期化
@@ -5001,8 +5006,8 @@ async function openProductForm(productId) {
       selectedTagIds = Array.isArray(p.tagIds) ? [...p.tagIds] : [];
     }
   } else {
-    // 新規登録時はブランドを毎回「ブランドなし（未分類）」にリセット
-    refreshBrandSelect('');
+    // 新規登録時は引数で渡されたブランドを初期値にする（省略時は未分類）
+    refreshBrandSelect(defaultBrandId || '');
   }
 
   renderFormImageGrid();
