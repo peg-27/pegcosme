@@ -23,7 +23,7 @@
      #DETAIL ........ 商品詳細画面
      #FORM .......... 商品登録・編集フォーム
      #MEMO .......... メモタブ（一覧・詳細・フォーム）
-     #SETTINGS ...... 設定画面（カテゴリ管理・ブランド管理・バックアップ）
+     #SETTINGS ...... 設定画面（カテゴリ管理・フォルダ管理・バックアップ）
      #MODAL ......... モーダル共通（app-wrap外）
      #LIGHTBOX ...... 画像全画面モーダル（app-wrap外）
      #TOAST ......... トースト通知（app-wrap外）
@@ -38,7 +38,7 @@
      #INGREDIENT .... 成分整形補助
      #MEMO_JS ....... メモ機能ロジック
      #SEARCH_JS ..... 検索処理
-     #SETTINGS_JS ... 設定画面ロジック（カテゴリ管理・ブランド管理・バックアップ処理）
+     #SETTINGS_JS ... 設定画面ロジック（カテゴリ管理・フォルダ管理・バックアップ処理）
      #MODAL_JS ...... モーダル制御
      #LIGHTBOX_JS ... 画像全画面モーダル制御
      #TOAST_JS ...... トースト制御
@@ -439,8 +439,11 @@ img { display: block; max-width: 100%; }
   <!-- 商品フォーム用：保存ボタン -->
   <button class="header-text-btn" id="btnFormSave" onclick="submitProduct()" style="display:none">保存</button>
   <!-- 並べ替えモード用：キャンセル・確定ボタン -->
-  <button class="header-text-btn header-text-btn-mute" id="btnSortCancel" onclick="cancelSortMode()" style="display:none">キャンセル</button>
-  <button class="header-text-btn" id="btnSortConfirm" onclick="confirmSortMode()" style="display:none">確定</button>
+<button class="header-text-btn header-text-btn-mute" id="btnSortCancel" onclick="cancelSortMode()" style="display:none">キャンセル</button>
+<button class="header-text-btn" id="btnSortConfirm" onclick="confirmSortMode()" style="display:none">確定</button>
+<!-- フォルダ管理画面用：キャンセル・確定ボタン（並べ替え操作後のみ表示） -->
+<button class="header-text-btn header-text-btn-mute" id="btnFolderManageCancel" onclick="cancelFolderManageReorder()" style="display:none">キャンセル</button>
+<button class="header-text-btn" id="btnFolderManageConfirm" onclick="confirmFolderManageReorder()" style="display:none">確定</button>
   <!-- 設定ボタン（縦三点） -->
   <button class="header-btn" id="btnSettings" onclick="openSettingsModal()" title="設定">
     <svg viewBox="0 0 24 24">
@@ -660,6 +663,23 @@ mark.hl {
 }
 .fab:active { transform: scale(0.92); box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
 .fab svg { width: 26px; height: 26px; stroke: #fff; fill: none; stroke-width: 2.2; stroke-linecap: round; }
+
+/* --- 名前順ソート時のフォルダグループ見出し --- */
+.folder-group-header {
+  padding: 14px 12px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  letter-spacing: 0.05em;
+}
+.folder-group-header:first-child {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 6px;
+}
+
 </style>
 
 <!-- ----- #BRAND HTML ----- -->
@@ -1549,6 +1569,12 @@ mark.hl {
   stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
 }
 
+/* --- メニュー項目のグレーアウト（操作不可状態） --- */
+.settings-menu-item.disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
 /* --- カテゴリ管理画面 --- */
 .cat-manage-screen { padding: 16px; }
 .cat-list-card {
@@ -1645,11 +1671,99 @@ mark.hl {
   pointer-events: none;
 }
 
-/* --- ブランド管理画面(カテゴリ管理と共通スタイルを流用) --- */
-.brand-manage-screen { padding: 16px; }
-
-/* --- タグ管理画面(ブランド管理と共通スタイルを流用) --- */
-.tag-manage-screen { padding: 16px; }
+/* --- フォルダ管理画面 --- */
+.folder-manage-screen {
+  padding: 16px;
+}
+.folder-manage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.folder-card {
+  display: flex;
+  align-items: center;
+  background: var(--card-bg);
+  border-radius: var(--radius-sm);
+  padding: 6px 6px 6px 0;
+  box-shadow: var(--shadow);
+  user-select: none;
+  -webkit-user-select: none;
+  box-sizing: border-box;
+  gap: 4px;
+}
+.folder-card.dragging {
+  opacity: 0.88;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+}
+.folder-card-handle {
+  flex-shrink: 0;
+  width: 40px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-lighter);
+  touch-action: none;
+  cursor: grab;
+}
+.folder-card-handle svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  fill: none;
+  pointer-events: none;
+}
+.folder-card-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.folder-card-count {
+  font-size: 12px;
+  color: var(--text-lighter);
+  margin-right: 2px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.folder-card-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.folder-card-btn:active {
+  background: var(--primary-lighter);
+}
+.folder-card-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--text-light);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.folder-card-btn.delete svg {
+  stroke: var(--accent);
+}
+.folder-placeholder {
+  background: var(--primary-lighter);
+  border: 2px dashed var(--primary);
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+}
 
 </style>
 
@@ -1660,22 +1774,12 @@ mark.hl {
   <div class="cat-list-card">
     <div class="cat-list" id="catList"></div>
   </div>
-
 </div>
 
-<!-- ブランド管理画面(設定 → ブランド管理で遷移) -->
-<div class="screen brand-manage-screen" id="screenBrandManage">
-  <div class="cat-list-card">
-    <div class="cat-list" id="brandManageList"></div>
-  </div>
-</div>
-
-<!-- タグ管理画面(設定 → タグ管理で遷移) -->
-<div class="screen tag-manage-screen" id="screenTagManage">
-  <div class="cat-list-card">
-    <div class="cat-list" id="tagManageList"></div>
-    <button class="cat-add-btn" onclick="showAddTagModal()">＋ タグを追加</button>
-  </div>
+<!-- フォルダ管理画面（設定 → フォルダ管理で遷移） -->
+<div class="screen folder-manage-screen" id="screenFolderManage">
+  <div class="folder-manage-list" id="folderManageList"></div>
+  <button class="cat-add-btn folder-add-tag-btn" onclick="showAddTagModal()">＋ タグを追加</button>
 </div>
 
 
@@ -1881,27 +1985,22 @@ mark.hl {
     </div>
 
     <!-- メニュー項目 -->
-    <div class="settings-modal-menu">
-      <button class="settings-menu-item" id="settingsMenuSort" onclick="onSortMenuClick()">
-        <svg viewBox="0 0 24 24"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6l2 2 3-3"/><path d="M3 12l2 2 3-3"/><path d="M3 18l2 2 3-3"/></svg>
-        <span class="menu-label">アイテムカードを並べ替える</span>
-      </button>
-      <button class="settings-menu-item" onclick="openCategoryManage()">
-        <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
-        <span class="menu-label">カテゴリ管理</span>
-        <svg class="menu-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-      </button>
-      <button class="settings-menu-item" onclick="openBrandManage()">
-        <svg viewBox="0 0 24 24"><path d="M20 7h-4V4a1 1 0 00-1-1H9a1 1 0 00-1 1v3H4a1 1 0 00-1 1v11a2 2 0 002 2h14a2 2 0 002-2V8a1 1 0 00-1-1zM10 5h4v2h-4V5z"/></svg>
-        <span class="menu-label">ブランド管理</span>
-        <svg class="menu-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-      </button>
-      <button class="settings-menu-item" onclick="openTagManage()">
-        <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none"/></svg>
-        <span class="menu-label">タグ管理</span>
-        <svg class="menu-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-      </button>
-    </div>
+<div class="settings-modal-menu">
+  <button class="settings-menu-item" onclick="openFolderManage()">
+    <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+    <span class="menu-label">フォルダ管理</span>
+    <svg class="menu-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+  <button class="settings-menu-item" id="settingsMenuSort" onclick="onSortMenuClick()">
+    <svg viewBox="0 0 24 24"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6l2 2 3-3"/><path d="M3 12l2 2 3-3"/><path d="M3 18l2 2 3-3"/></svg>
+    <span class="menu-label">アイテムカードを並べ替える</span>
+  </button>
+  <button class="settings-menu-item" onclick="openCategoryManage()">
+    <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+    <span class="menu-label">カテゴリ管理</span>
+    <svg class="menu-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+</div>
 
     <!-- バックアップ警告 -->
     <div class="backup-reminder" id="backupReminder">
@@ -2385,6 +2484,11 @@ function showScreen(name, pushHistory = true) {
   formSaveBtn.style.display = 'none';
   if (sortConfirmBtn) sortConfirmBtn.style.display = 'none';
   if (sortCancelBtn) sortCancelBtn.style.display = 'none';
+  // フォルダ管理画面用ボタンも全画面でデフォルト非表示
+  const folderManageCancelBtn = document.getElementById('btnFolderManageCancel');
+  const folderManageConfirmBtn = document.getElementById('btnFolderManageConfirm');
+  if (folderManageCancelBtn) folderManageCancelBtn.style.display = 'none';
+  if (folderManageConfirmBtn) folderManageConfirmBtn.style.display = 'none';
   totalCount.style.display = 'none';
   searchCount.style.display = 'none';
 
@@ -2410,8 +2514,9 @@ function showScreen(name, pushHistory = true) {
       totalCount.style.display = 'block';
       // 中央バッジを使うので、タイトル側に余白を確保
       headerEl.classList.add('title-with-center-count');
-      // ブランド一覧画面では「並べ替え順」は無効なので、デフォルトに戻す
-      if (currentSort === 'custom') {
+      // フォルダ並び順が未設定なのに custom が選ばれている状態なら、デフォルトに戻す
+      // (folderOrder はメモリ上の変数なので await 不要。renderBrands 内で最新化される)
+      if (currentSort === 'custom' && (!Array.isArray(folderOrder) || folderOrder.length === 0)) {
         currentSort = 'createdAt_desc';
       }
       renderBrands();
@@ -2511,23 +2616,18 @@ function showScreen(name, pushHistory = true) {
       title.textContent = 'カテゴリ管理';
       renderCategoryList();
       break;
-    case 'brandManage':
-      document.getElementById('screenBrandManage').classList.add('active');
+      case 'folderManage':
+      document.getElementById('screenFolderManage').classList.add('active');
       backBtn.style.display = 'flex';
       tabBar.style.display = 'none';
       fab.style.display = 'none';
       settingsBtn.style.display = 'none';
-      title.textContent = 'ブランド管理';
-      renderBrandManageList();
-      break;
-    case 'tagManage':
-      document.getElementById('screenTagManage').classList.add('active');
-      backBtn.style.display = 'flex';
-      tabBar.style.display = 'none';
-      fab.style.display = 'none';
-      settingsBtn.style.display = 'none';
-      title.textContent = 'タグ管理';
-      renderTagManageList();
+      title.textContent = 'フォルダ管理';
+      // フォルダ管理画面用のキャンセル・確定ボタンは初期非表示
+      // （並べ替え操作で順序が変わった時だけ表示される）
+      document.getElementById('btnFolderManageCancel').style.display = 'none';
+      document.getElementById('btnFolderManageConfirm').style.display = 'none';
+      initFolderManage();
       break;
   }
 
@@ -2597,6 +2697,11 @@ async function goBack() {
   // 商品フォームからの戻りは自動保存(submit済みならスキップ)
   if (currentScreen === 'form' && !formSubmitted) {
     await autoSaveProduct();
+  }
+  // フォルダ管理画面からの戻りは並べ替えを自動保存（離脱処理だけ実行し、
+  // 戻り先の画面遷移は通常のロジックに任せる）
+  if (currentScreen === 'folderManage') {
+    await leaveFolderManageScreen();
   }
   formSubmitted = false;
   if (screenHistory.length > 0) {
@@ -2901,12 +3006,14 @@ function renderSortDropdown() {
   let html = '<div class="dropdown-section-title">並び替え</div>';
 
   // カードタブでは「並べ替え順」を先頭に追加
+  //  - トップ画面（brand）：folderOrder があれば有効
   //  - ブランドフォルダ画面：brand.sortOrder があれば有効
   //  - タグフォルダ画面：tag.cardOrder があれば有効
-  //  - ブランド一覧画面：概念的に非該当なので常にグレーアウト
   if (!isMemo) {
     let hasOrder = false;
-    if (currentScreen === 'products') {
+    if (currentScreen === 'brand') {
+      hasOrder = Array.isArray(folderOrder) && folderOrder.length > 0;
+    } else if (currentScreen === 'products') {
       const brand = allBrands.find(b => b.id === currentBrandId);
       hasOrder = !!(brand?.sortOrder && brand.sortOrder.length > 0);
     } else if (currentScreen === 'tagProducts') {
@@ -3107,6 +3214,11 @@ let allBrands = [];
 let allProducts = [];
 let allMemos = [];
 
+// --- フォルダ並び順（ブランド＋タグ混在） ---
+//   metaストアの 'folderOrder' に保存される
+//   形式: [{type:'brand'|'tag', id:'xxx'}, ...]
+let folderOrder = [];
+
 // --- 全データをDBから読み込み ---
 async function loadAllData() {
   allBrands = await dbGetAll('brands');
@@ -3118,6 +3230,10 @@ async function loadAllData() {
   allTags.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
   allBrands.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
   allMemos.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+  // フォルダ並び順を読み込み（meta ストアから）
+  const folderOrderMeta = await dbGet('meta', 'folderOrder');
+  folderOrder = Array.isArray(folderOrderMeta?.value) ? folderOrderMeta.value : [];
 }
 
 // --- ブランド一覧を描画 ---
@@ -3168,8 +3284,9 @@ async function renderBrands() {
       document.getElementById('searchTotalCount').textContent = products.length + '件';
     }
 
-    // ソート
-    products = sortProducts(products, currentSort);
+    // ソート（トップ画面のフィルタ／検索結果では custom は使えないのでフォールバック）
+    const sortKeyForProducts = currentSort === 'custom' ? 'createdAt_desc' : currentSort;
+    products = sortProducts(products, sortKeyForProducts);
 
     // 0件
     if (products.length === 0) {
@@ -3222,7 +3339,7 @@ async function renderBrands() {
   }
 
   // === 通常表示（フィルターなし・検索なし）：タグ＋ブランドフォルダ一覧 ===
-  let brands = allBrands;
+  let brands = allBrands.slice();
 
   // タグフォルダ：中身が1件以上あるタグだけ抽出
   let tags = allTags.filter(t =>
@@ -3232,15 +3349,57 @@ async function renderBrands() {
   // 未分類商品（brandIdがnullまたは空）を取得
   let unassigned = allProducts.filter(p => !p.brandId);
 
-  // --- ブランドのソート ---
-  if (currentSort === 'name_asc') {
-    brands.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  // --- ブランド＋タグを混ぜたフォルダリストを構築 ---
+  // 各要素：{ type:'brand'|'tag', id, name, count, refValue }
+  let folders = [];
+  brands.forEach(b => {
+    folders.push({
+      type: 'brand',
+      id: b.id,
+      name: b.name,
+      count: allProducts.filter(p => p.brandId === b.id).length
+    });
+  });
+  tags.forEach(t => {
+    folders.push({
+      type: 'tag',
+      id: t.id,
+      name: t.name,
+      count: allProducts.filter(p => Array.isArray(p.tagIds) && p.tagIds.includes(t.id)).length
+    });
+  });
+
+  // --- フォルダのソート ---
+  if (currentSort === 'custom') {
+    // 並べ替え順：folderOrder の順番で並べ、含まれないものは末尾（新規追加分など）
+    const orderMap = new Map(
+      folderOrder.map((f, i) => [`${f.type}:${f.id}`, i])
+    );
+    folders.sort((a, b) => {
+      const ka = `${a.type}:${a.id}`;
+      const kb = `${b.type}:${b.id}`;
+      const ai = orderMap.has(ka) ? orderMap.get(ka) : Infinity;
+      const bi = orderMap.has(kb) ? orderMap.get(kb) : Infinity;
+      // 両方とも未登録なら名前順
+      if (ai === Infinity && bi === Infinity) {
+        return a.name.localeCompare(b.name, 'ja');
+      }
+      return ai - bi;
+    });
+  } else if (currentSort === 'name_asc') {
+    folders.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
   } else {
+    // 価格・日付などは、フォルダ内の商品から代表値を計算
     const [field, order] = currentSort.split('_');
     const dir = order === 'asc' ? 1 : -1;
 
-    const brandValue = (brandId) => {
-      const prods = allProducts.filter(p => p.brandId === brandId);
+    const folderValue = (folder) => {
+      let prods;
+      if (folder.type === 'brand') {
+        prods = allProducts.filter(p => p.brandId === folder.id);
+      } else {
+        prods = allProducts.filter(p => Array.isArray(p.tagIds) && p.tagIds.includes(folder.id));
+      }
       if (prods.length === 0) return field === 'price' ? 0 : '';
       if (field === 'price') {
         return Math.max(...prods.map(p => Number(p.price) || 0));
@@ -3251,46 +3410,20 @@ async function renderBrands() {
       return vals[vals.length - 1];
     };
 
-    brands.sort((a, b) => {
-      const va = brandValue(a.id);
-      const vb = brandValue(b.id);
+    folders.sort((a, b) => {
+      const va = folderValue(a);
+      const vb = folderValue(b);
       if (field === 'price') return (va - vb) * dir;
       return String(va).localeCompare(String(vb), 'ja') * dir;
     });
   }
 
-  // --- タグのソート（ブランドと同じロジック） ---
-  if (currentSort === 'name_asc') {
-    tags.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-  } else {
-    const [field, order] = currentSort.split('_');
-    const dir = order === 'asc' ? 1 : -1;
-
-    const tagValue = (tagId) => {
-      const prods = allProducts.filter(p => Array.isArray(p.tagIds) && p.tagIds.includes(tagId));
-      if (prods.length === 0) return field === 'price' ? 0 : '';
-      if (field === 'price') {
-        return Math.max(...prods.map(p => Number(p.price) || 0));
-      }
-      const vals = prods.map(p => p[field] || '').filter(Boolean);
-      if (vals.length === 0) return '';
-      vals.sort();
-      return vals[vals.length - 1];
-    };
-
-    tags.sort((a, b) => {
-      const va = tagValue(a.id);
-      const vb = tagValue(b.id);
-      if (field === 'price') return (va - vb) * dir;
-      return String(va).localeCompare(String(vb), 'ja') * dir;
-    });
-  }
-
-  // --- 未分類商品のソート ---
-  unassigned = sortProducts(unassigned, currentSort);
+  // --- 未分類商品のソート（custom はフォールバック） ---
+  const sortKeyForUnassigned = currentSort === 'custom' ? 'createdAt_desc' : currentSort;
+  unassigned = sortProducts(unassigned, sortKeyForUnassigned);
 
   // タグもブランドも未分類も0件
-  if (brands.length === 0 && tags.length === 0 && unassigned.length === 0) {
+  if (folders.length === 0 && unassigned.length === 0) {
     list.innerHTML = '';
     empty.style.display = 'flex';
     empty.querySelector('p').innerHTML = 'まだ何も登録されていません<br>＋ボタンからカードを追加してください';
@@ -3301,36 +3434,84 @@ async function renderBrands() {
 
   const thumbIcon = `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
 
-  // タグカード一覧を生成（タグフォルダ・長押しなし）
-  const tagHTML = tags.map(t => {
-    const count = allProducts.filter(p => Array.isArray(p.tagIds) && p.tagIds.includes(t.id)).length;
-    return `<div class="brand-card" data-tag-id="${t.id}"
-      onclick="openTag('${t.id}')"
-      oncontextmenu="return false">
-      <div class="brand-info">
-        <div class="brand-name">#${esc(t.name)}</div>
-        <div class="brand-count">${count}件の商品</div>
-      </div>
-      <svg class="brand-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-    </div>`;
-  }).join('');
+  // フォルダカード1件分のHTMLを生成
+  const renderFolderCard = (f) => {
+    if (f.type === 'tag') {
+      // タグカード（長押しなし）
+      return `<div class="brand-card" data-tag-id="${f.id}"
+        onclick="openTag('${f.id}')"
+        oncontextmenu="return false">
+        <div class="brand-info">
+          <div class="brand-name">#${esc(f.name)}</div>
+          <div class="brand-count">${f.count}件の商品</div>
+        </div>
+        <svg class="brand-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </div>`;
+    } else {
+      // ブランドカード（長押し対応）
+      return `<div class="brand-card" data-id="${f.id}"
+        onclick="openBrand('${f.id}')"
+        oncontextmenu="return false"
+        ontouchstart="startBrandLongPress(event, '${f.id}')"
+        ontouchend="cancelBrandLongPress()"
+        ontouchmove="cancelBrandLongPress()">
+        <div class="brand-info">
+          <div class="brand-name">${esc(f.name)}</div>
+          <div class="brand-count">${f.count}件の商品</div>
+        </div>
+        <svg class="brand-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </div>`;
+    }
+  };
 
-  // ブランドカード一覧を生成（長押し対応）
-  const brandHTML = brands.map(b => {
-    const count = allProducts.filter(p => p.brandId === b.id).length;
-    return `<div class="brand-card" data-id="${b.id}"
-      onclick="openBrand('${b.id}')"
-      oncontextmenu="return false"
-      ontouchstart="startBrandLongPress(event, '${b.id}')"
-      ontouchend="cancelBrandLongPress()"
-      ontouchmove="cancelBrandLongPress()">
-      <div class="brand-info">
-        <div class="brand-name">${esc(b.name)}</div>
-        <div class="brand-count">${count}件の商品</div>
-      </div>
-      <svg class="brand-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-    </div>`;
-  }).join('');
+  // フォルダ一覧をHTMLに変換
+  let folderHTML;
+  if (currentSort === 'name_asc' && folders.length > 0) {
+    // === 名前順のときだけグループ見出し付きで描画 ===
+    // タグとブランドを分離
+    const tagFolders = folders.filter(f => f.type === 'tag');
+    const brandFolders = folders.filter(f => f.type === 'brand');
+
+    let html = '';
+
+    // タグフォルダを先頭にまとめる
+    if (tagFolders.length > 0) {
+      tagFolders.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+      html += `<div class="folder-group-header">タグ</div>`;
+      html += tagFolders.map(renderFolderCard).join('');
+    }
+
+    // ブランドフォルダを A〜Z／あ／か… でグルーピング
+    if (brandFolders.length > 0) {
+      const grouped = {};
+      brandFolders.forEach(f => {
+        const key = getBrandGroupKey(f.name);
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(f);
+      });
+      // 各グループ内をソート（記号→数字→アルファベット→五十音）
+      Object.values(grouped).forEach(arr => {
+        arr.sort((a, b) => {
+          const ka = getBrandSortKey(a.name);
+          const kb = getBrandSortKey(b.name);
+          return ka < kb ? -1 : ka > kb ? 1 : 0;
+        });
+      });
+      // グループ順に出力
+      const GROUP_ORDER = ['A-Z', 'あ', 'か', 'さ', 'た', 'な', 'は', 'ま', 'や', 'ら', 'わ', 'その他'];
+      GROUP_ORDER.forEach(groupKey => {
+        const arr = grouped[groupKey];
+        if (!arr || arr.length === 0) return;
+        const label = groupKey === 'A-Z' ? 'A〜Z' : groupKey;
+        html += `<div class="folder-group-header">${label}</div>`;
+        html += arr.map(renderFolderCard).join('');
+      });
+    }
+    folderHTML = html;
+  } else {
+    // === それ以外のソートはフラットに描画 ===
+    folderHTML = folders.map(renderFolderCard).join('');
+  }
 
   // 未分類商品カードを生成（BlobをオブジェクトURLに変換）
   const unassignedCardList = await Promise.all(unassigned.map(async (p) => {
@@ -3359,7 +3540,17 @@ async function renderBrands() {
     </div>`;
   }));
 
-  list.innerHTML = tagHTML + brandHTML + unassignedCardList.join('');
+  // 未分類カードに見出しを付けるか判定
+  let unassignedHTML;
+  if (currentSort === 'name_asc' && unassigned.length > 0) {
+    // 名前順のときは「未分類」見出しを付ける
+    unassignedHTML = `<div class="folder-group-header">未分類</div>` + unassignedCardList.join('');
+  } else {
+    // それ以外はそのまま
+    unassignedHTML = unassignedCardList.join('');
+  }
+
+  list.innerHTML = folderHTML + unassignedHTML;
 }
 
 // --- トップ画面のDOMからフォルダ一覧を組み立てる（スワイプ移動用） ---
@@ -3884,12 +4075,83 @@ async function moveToBrand(productId, brandId) {
 
 // --- 並べ替えモードに入る ---
 async function enterSortMode() {
-  if (currentScreen !== 'products' && currentScreen !== 'tagProducts') return;
+  if (currentScreen !== 'products' && currentScreen !== 'tagProducts' && currentScreen !== 'brand') return;
   if (isSortMode) return;
 
   await loadAllData();
 
-  // 画面に応じて対象商品と保存済み順序を取得
+  // 画面に応じて初期順序を構築
+  if (currentScreen === 'brand') {
+    // トップ画面：ブランド＋タグ混在のフォルダ並べ替え
+    // 中身が1件以上あるタグだけを対象にする（現状の表示と揃える）
+    const visibleTags = allTags.filter(t =>
+      allProducts.some(p => Array.isArray(p.tagIds) && p.tagIds.includes(t.id))
+    );
+
+    // フォルダ配列を構築
+    let folders = [];
+    allBrands.forEach(b => {
+      folders.push({ type: 'brand', id: b.id, name: b.name });
+    });
+    visibleTags.forEach(t => {
+      folders.push({ type: 'tag', id: t.id, name: t.name });
+    });
+
+    // --- 現在のトップ画面のソート結果に揃える ---
+    if (currentSort === 'custom') {
+      // 「並べ替え順」適用中：保存済み folderOrder を使う
+      const orderMap = new Map(folderOrder.map((f, i) => [`${f.type}:${f.id}`, i]));
+      folders.sort((a, b) => {
+        const ka = `${a.type}:${a.id}`;
+        const kb = `${b.type}:${b.id}`;
+        const ai = orderMap.has(ka) ? orderMap.get(ka) : Infinity;
+        const bi = orderMap.has(kb) ? orderMap.get(kb) : Infinity;
+        if (ai === Infinity && bi === Infinity) {
+          return a.name.localeCompare(b.name, 'ja');
+        }
+        return ai - bi;
+      });
+    } else if (currentSort === 'name_asc') {
+      folders.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    } else {
+      // 価格・日付などは、フォルダ内の商品から代表値を計算
+      const [field, order] = currentSort.split('_');
+      const dir = order === 'asc' ? 1 : -1;
+
+      const folderValue = (folder) => {
+        let prods;
+        if (folder.type === 'brand') {
+          prods = allProducts.filter(p => p.brandId === folder.id);
+        } else {
+          prods = allProducts.filter(p => Array.isArray(p.tagIds) && p.tagIds.includes(folder.id));
+        }
+        if (prods.length === 0) return field === 'price' ? 0 : '';
+        if (field === 'price') {
+          return Math.max(...prods.map(p => Number(p.price) || 0));
+        }
+        const vals = prods.map(p => p[field] || '').filter(Boolean);
+        if (vals.length === 0) return '';
+        vals.sort();
+        return vals[vals.length - 1];
+      };
+
+      folders.sort((a, b) => {
+        const va = folderValue(a);
+        const vb = folderValue(b);
+        if (field === 'price') return (va - vb) * dir;
+        return String(va).localeCompare(String(vb), 'ja') * dir;
+      });
+    }
+
+    // sortModeWorkingOrder には "type:id" 形式の文字列を入れる
+    sortModeWorkingOrder = folders.map(f => `${f.type}:${f.id}`);
+    isSortMode = true;
+    updateHeaderForSortMode();
+    renderSortModeList();
+    return;
+  }
+
+  // 画面に応じて対象商品と保存済み順序を取得（既存処理）
   let products, savedOrder;
   if (currentScreen === 'tagProducts') {
     products = allProducts.filter(p =>
@@ -3929,11 +4191,55 @@ async function enterSortMode() {
 
 // --- 並べ替えモード用の平べったい一覧を描画 ---
 function renderSortModeList() {
-  const list = document.getElementById('productList');
-  const empty = document.getElementById('productEmpty');
+  // 画面によって対象リストの DOM が違う
+  let list, empty;
+  if (currentScreen === 'brand') {
+    list = document.getElementById('brandList');
+    empty = document.getElementById('brandEmpty');
+  } else {
+    list = document.getElementById('productList');
+    empty = document.getElementById('productEmpty');
+  }
   empty.style.display = 'none';
 
-  // 画面に応じて対象商品をフィルタ
+  // トップ画面（フォルダ並べ替え）
+  if (currentScreen === 'brand') {
+    const brandMap = new Map(allBrands.map(b => [b.id, b]));
+    const tagMap = new Map(allTags.map(t => [t.id, t]));
+
+    const html = sortModeWorkingOrder.map(key => {
+      const [type, id] = key.split(':');
+      let name = '';
+      if (type === 'brand') {
+        const b = brandMap.get(id);
+        if (!b) return '';
+        name = b.name;
+      } else {
+        const t = tagMap.get(id);
+        if (!t) return '';
+        name = '#' + t.name;
+      }
+      return `<div class="sort-card" data-id="${esc(key)}">
+        <div class="sort-card-name">${esc(name)}</div>
+        <div class="sort-card-handle"
+             ontouchstart="onHandleTouchStart(event)"
+             ontouchmove="onHandleTouchMove(event)"
+             ontouchend="onHandleTouchEnd(event)"
+             ontouchcancel="onHandleTouchEnd(event)">
+          <svg viewBox="0 0 24 24">
+            <line x1="4" y1="8" x2="20" y2="8"/>
+            <line x1="4" y1="12" x2="20" y2="12"/>
+            <line x1="4" y1="16" x2="20" y2="16"/>
+          </svg>
+        </div>
+      </div>`;
+    }).join('');
+
+    list.innerHTML = html;
+    return;
+  }
+
+  // ブランドフォルダ／タグフォルダ画面（既存処理）
   let targetProducts;
   if (currentScreen === 'tagProducts') {
     targetProducts = allProducts.filter(p =>
@@ -4013,14 +4319,36 @@ function updateHeaderForSortMode() {
     // タイトル復帰：画面に応じて分岐（直後のrender関数で件数付きに上書きされるが暫定値）
     if (currentScreen === 'tagProducts') {
       title.textContent = '#' + getTagName(currentTagId);
-    } else {
+    } else if (currentScreen === 'products') {
       title.textContent = getBrandName(currentBrandId);
+    } else {
+      // トップ画面（brand）：タイトルは空（ロゴ表示のため）
+      title.textContent = '';
     }
   }
 }
 
 // --- 並べ替えを確定（DB保存） ---
 async function confirmSortMode() {
+  if (currentScreen === 'brand') {
+    // フォルダ並べ替え：folderOrder を meta ストアに保存
+    const newOrder = sortModeWorkingOrder.map(key => {
+      const [type, id] = key.split(':');
+      return { type, id };
+    });
+    await dbPut('meta', { key: 'folderOrder', value: newOrder });
+    folderOrder = newOrder;
+    await markDataUpdated();
+
+    isSortMode = false;
+    sortModeWorkingOrder = [];
+    currentSort = 'custom';
+    updateHeaderForSortMode();
+    renderBrands();
+    toast('並び順を保存しました');
+    return;
+  }
+
   if (currentScreen === 'tagProducts') {
     const tag = await dbGet('tags', currentTagId);
     if (tag) {
@@ -4055,7 +4383,9 @@ function cancelSortMode() {
   isSortMode = false;
   sortModeWorkingOrder = [];
   updateHeaderForSortMode();
-  if (currentScreen === 'tagProducts') {
+  if (currentScreen === 'brand') {
+    renderBrands();
+  } else if (currentScreen === 'tagProducts') {
     renderTagProducts();
   } else {
     renderProducts();
@@ -4068,6 +4398,14 @@ function cancelSortMode() {
 
 // --- ドラッグ用の状態 ---
 let sortDragState = null;
+
+// --- 並べ替えモード中、現在の画面に対応するリスト要素を返す ---
+function getSortListEl() {
+  if (currentScreen === 'brand') {
+    return document.getElementById('brandList');
+  }
+  return document.getElementById('productList');
+}
 
 // --- ハンドル押下開始 ---
 function onHandleTouchStart(e) {
@@ -4113,7 +4451,7 @@ function onHandleTouchMove(e) {
   sortDragState.card.style.top = newTop + 'px';
 
   // 他のカードの位置から、placeholderの挿入先を決定
-  const list = document.getElementById('productList');
+  const list = getSortListEl();
   const children = Array.from(list.children).filter(c =>
     c !== sortDragState.card && c !== sortDragState.placeholder
   );
@@ -4138,7 +4476,7 @@ function onHandleTouchMove(e) {
 function onHandleTouchEnd(e) {
   if (!sortDragState) return;
 
-  const list = document.getElementById('productList');
+  const list = getSortListEl();
   const { card, placeholder } = sortDragState;
 
   // placeholderの位置にcardを戻す
@@ -5886,6 +6224,10 @@ async function exportData() {
     return exported;
   }));
 
+  // フォルダ並び順も含める
+  const folderOrderMeta = await dbGet('meta', 'folderOrder');
+  const folderOrderForExport = Array.isArray(folderOrderMeta?.value) ? folderOrderMeta.value : [];
+
   const data = {
     version: 4,
     exportedAt: new Date().toISOString(),
@@ -5893,7 +6235,8 @@ async function exportData() {
     products: productsForExport,
     memos: allMemos,
     categories: allCategories,
-    tags: allTags
+    tags: allTags,
+    folderOrder: folderOrderForExport
   };
 
   const json = JSON.stringify(data, null, 2);
@@ -6012,6 +6355,11 @@ async function doImport(file) {
 
     if (data.memos) {
       for (const m of data.memos) await dbPut('memos', m);
+    }
+
+    // フォルダ並び順の復元（v4以降のバックアップにのみ含まれる）
+    if (Array.isArray(data.folderOrder)) {
+      await dbPut('meta', { key: 'folderOrder', value: data.folderOrder });
     }
 
     await loadCategories();
@@ -6260,8 +6608,9 @@ async function openSettingsModal() {
   // バックアップ情報を更新
   await checkBackupReminder();
 
-  // 「アイテムカードを並べ替える」ボタンの有効・無効
-  // 商品一覧画面（ブランドフォルダ／タグフォルダ）のときのみ有効
+  // 「アイテムカードを並べ替える」項目の有効・無効
+  // - ブランド／タグフォルダ画面 → 有効
+  // - それ以外（トップ画面・詳細画面・メモ画面など）→ グレーアウト
   const sortMenuItem = document.getElementById('settingsMenuSort');
   if (currentScreen === 'products' || currentScreen === 'tagProducts') {
     sortMenuItem.classList.remove('disabled');
@@ -6298,48 +6647,333 @@ function openCategoryManage() {
   showScreen('categoryManage');
 }
 
-// --- ブランド管理画面へ遷移 ---
-function openBrandManage() {
+// --- フォルダ管理画面へ遷移 ---
+function openFolderManage() {
   closeSettingsModal();
-  showScreen('brandManage');
+  showScreen('folderManage');
 }
 
-// --- タグ管理画面へ遷移 ---
-function openTagManage() {
-  closeSettingsModal();
-  showScreen('tagManage');
+// ===== フォルダ管理 =====
+
+// --- フォルダ管理画面の状態管理 ---
+let folderManageWorkingOrder = [];  // 並べ替え操作中の順序（"type:id" の配列）
+let folderManageDirty = false;       // 並べ替え操作で順序が変わったか
+let folderDragState = null;          // ドラッグ中の状態
+
+// --- フォルダ管理画面の初期化 ---
+function initFolderManage() {
+  folderManageWorkingOrder = [];
+  folderManageDirty = false;
+  folderDragState = null;
+  renderFolderManageList();
 }
 
-// ===== ブランド管理 =====
-
-// --- ブランド管理一覧を描画 ---
-async function renderBrandManageList() {
+// --- フォルダ管理画面の描画（ブランド・タグ混在表示） ---
+async function renderFolderManageList() {
   await loadAllData();
-  const container = document.getElementById('brandManageList');
-  const brands = allBrands.slice().sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  const container = document.getElementById('folderManageList');
 
-  if (brands.length === 0) {
-    container.innerHTML = '<div style="font-size:13px;color:var(--text-lighter);padding:12px 0;">ブランドが登録されていません</div>';
+  // トップ画面の現在の並び順をそのまま反映する
+  //   - トップ画面に表示されるフォルダ（全ブランド＋中身1件以上のタグ）→ トップ画面と同じ順序
+  //   - トップ画面に表示されない中身0件のタグ → 末尾に名前順で追加
+
+  // トップ画面に表示されるフォルダを構築
+  let visibleFolders = [];
+  allBrands.forEach(b => {
+    visibleFolders.push({
+      type: 'brand',
+      id: b.id,
+      name: b.name,
+      count: allProducts.filter(p => p.brandId === b.id).length
+    });
+  });
+  allTags.forEach(t => {
+    const count = allProducts.filter(p => Array.isArray(p.tagIds) && p.tagIds.includes(t.id)).length;
+    if (count > 0) {
+      visibleFolders.push({ type: 'tag', id: t.id, name: t.name, count });
+    }
+  });
+
+  // トップ画面と同じソートロジックを適用（renderBrands と揃える）
+  if (currentSort === 'custom') {
+    const orderMap = new Map(folderOrder.map((f, i) => [`${f.type}:${f.id}`, i]));
+    visibleFolders.sort((a, b) => {
+      const ka = `${a.type}:${a.id}`;
+      const kb = `${b.type}:${b.id}`;
+      const ai = orderMap.has(ka) ? orderMap.get(ka) : Infinity;
+      const bi = orderMap.has(kb) ? orderMap.get(kb) : Infinity;
+      if (ai === Infinity && bi === Infinity) {
+        return a.name.localeCompare(b.name, 'ja');
+      }
+      return ai - bi;
+    });
+  } else if (currentSort === 'name_asc') {
+    visibleFolders.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  } else {
+    // 価格・日付などは、フォルダ内の商品から代表値を計算
+    const [field, order] = currentSort.split('_');
+    const dir = order === 'asc' ? 1 : -1;
+    const folderValue = (folder) => {
+      let prods;
+      if (folder.type === 'brand') {
+        prods = allProducts.filter(p => p.brandId === folder.id);
+      } else {
+        prods = allProducts.filter(p => Array.isArray(p.tagIds) && p.tagIds.includes(folder.id));
+      }
+      if (prods.length === 0) return field === 'price' ? 0 : '';
+      if (field === 'price') {
+        return Math.max(...prods.map(p => Number(p.price) || 0));
+      }
+      const vals = prods.map(p => p[field] || '').filter(Boolean);
+      if (vals.length === 0) return '';
+      vals.sort();
+      return vals[vals.length - 1];
+    };
+    visibleFolders.sort((a, b) => {
+      const va = folderValue(a);
+      const vb = folderValue(b);
+      if (field === 'price') return (va - vb) * dir;
+      return String(va).localeCompare(String(vb), 'ja') * dir;
+    });
+  }
+
+  // 中身0件のタグを末尾に名前順で追加（管理画面でしか表示されない）
+  const hiddenTags = allTags
+    .filter(t => !allProducts.some(p => Array.isArray(p.tagIds) && p.tagIds.includes(t.id)))
+    .map(t => ({ type: 'tag', id: t.id, name: t.name, count: 0 }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+
+  let folders = visibleFolders.concat(hiddenTags);
+
+  // 並べ替え操作中なら、その順序を尊重して並べ直す
+  if (folderManageWorkingOrder.length > 0) {
+    const workingMap = new Map(folderManageWorkingOrder.map((k, i) => [k, i]));
+    folders.sort((a, b) => {
+      const ka = `${a.type}:${a.id}`;
+      const kb = `${b.type}:${b.id}`;
+      const ai = workingMap.has(ka) ? workingMap.get(ka) : Infinity;
+      const bi = workingMap.has(kb) ? workingMap.get(kb) : Infinity;
+      return ai - bi;
+    });
+  }
+
+  // 0件の場合
+  if (folders.length === 0) {
+    container.innerHTML = '<div style="font-size:13px;color:var(--text-lighter);padding:12px 0;text-align:center;">フォルダが登録されていません</div>';
     return;
   }
 
+  // HTMLを生成
   let html = '';
-  for (const b of brands) {
-    const count = allProducts.filter(p => p.brandId === b.id).length;
-    html += `
-    <div class="cat-item">
-      <div class="cat-item-name">${esc(b.name)}</div>
-      <div class="cat-item-count">${count}件</div>
-      <button class="cat-item-btn" onclick="showEditBrandModal('${b.id}')" title="編集">
+  for (const f of folders) {
+    const displayName = f.type === 'tag' ? '#' + esc(f.name) : esc(f.name);
+    const editAction = f.type === 'tag'
+      ? `showEditTagModal('${f.id}')`
+      : `showEditBrandModal('${f.id}')`;
+    const deleteAction = f.type === 'tag'
+      ? `showDeleteTagModal('${f.id}')`
+      : `showDeleteBrandModalFromManage('${f.id}')`;
+
+    html += `<div class="folder-card" data-key="${f.type}:${f.id}">
+      <div class="folder-card-handle"
+           ontouchstart="onFolderHandleTouchStart(event)"
+           ontouchmove="onFolderHandleTouchMove(event)"
+           ontouchend="onFolderHandleTouchEnd(event)"
+           ontouchcancel="onFolderHandleTouchEnd(event)">
+        <svg viewBox="0 0 24 24">
+          <line x1="4" y1="8" x2="20" y2="8"/>
+          <line x1="4" y1="12" x2="20" y2="12"/>
+          <line x1="4" y1="16" x2="20" y2="16"/>
+        </svg>
+      </div>
+      <div class="folder-card-name">${displayName}</div>
+      <div class="folder-card-count">${f.count}件</div>
+      <button class="folder-card-btn" onclick="${editAction}" title="編集">
         <svg viewBox="0 0 24 24"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
       </button>
-      <button class="cat-item-btn delete" onclick="showDeleteBrandModalFromManage('${b.id}')" title="削除">
+      <button class="folder-card-btn delete" onclick="${deleteAction}" title="削除">
         <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
       </button>
     </div>`;
   }
   container.innerHTML = html;
 }
+
+// --- フォルダ管理画面の再描画ヘルパー ---
+function refreshManageScreen() {
+  if (currentScreen === 'folderManage') {
+    renderFolderManageList();
+  }
+}
+
+// --- ドラッグハンドル：押下開始 ---
+function onFolderHandleTouchStart(e) {
+  if (folderDragState) return;
+  e.preventDefault();
+  e.stopPropagation();
+
+  const handle = e.currentTarget;
+  const card = handle.closest('.folder-card');
+  if (!card) return;
+
+  const rect = card.getBoundingClientRect();
+  const touch = e.touches[0];
+
+  // 元の位置を保持するplaceholder
+  const placeholder = document.createElement('div');
+  placeholder.className = 'folder-placeholder';
+  placeholder.style.height = rect.height + 'px';
+  card.parentNode.insertBefore(placeholder, card);
+
+  // カードをfixed化して浮かせる
+  card.classList.add('dragging');
+  card.style.position = 'fixed';
+  card.style.left = rect.left + 'px';
+  card.style.top = rect.top + 'px';
+  card.style.width = rect.width + 'px';
+  card.style.zIndex = '1000';
+
+  folderDragState = {
+    card,
+    placeholder,
+    offsetY: touch.clientY - rect.top
+  };
+}
+
+// --- ドラッグハンドル：移動中 ---
+function onFolderHandleTouchMove(e) {
+  if (!folderDragState) return;
+  e.preventDefault();
+
+  const touch = e.touches[0];
+  const newTop = touch.clientY - folderDragState.offsetY;
+  folderDragState.card.style.top = newTop + 'px';
+
+  // 他のカードの位置から、placeholderの挿入先を決定
+  const list = document.getElementById('folderManageList');
+  const children = Array.from(list.children).filter(c =>
+    c !== folderDragState.card && c !== folderDragState.placeholder
+  );
+
+  const centerY = touch.clientY;
+  let inserted = false;
+  for (const c of children) {
+    const rect = c.getBoundingClientRect();
+    const midpoint = (rect.top + rect.bottom) / 2;
+    if (centerY < midpoint) {
+      list.insertBefore(folderDragState.placeholder, c);
+      inserted = true;
+      break;
+    }
+  }
+  if (!inserted) {
+    list.appendChild(folderDragState.placeholder);
+  }
+}
+
+// --- ドラッグハンドル：終了 ---
+function onFolderHandleTouchEnd(e) {
+  if (!folderDragState) return;
+
+  const list = document.getElementById('folderManageList');
+  const { card, placeholder } = folderDragState;
+
+  // placeholderの位置にcardを戻す
+  list.insertBefore(card, placeholder);
+  placeholder.remove();
+
+  // styleをリセット
+  card.classList.remove('dragging');
+  card.style.position = '';
+  card.style.left = '';
+  card.style.top = '';
+  card.style.width = '';
+  card.style.zIndex = '';
+
+  // 並べ替え結果を保持
+  const newOrder = Array.from(list.querySelectorAll('.folder-card'))
+    .map(el => el.dataset.key);
+
+  // 順序が変わったかチェック
+  const previousOrder = folderManageWorkingOrder.length > 0
+    ? folderManageWorkingOrder
+    : getCurrentFolderOrderKeys();
+  const changed = newOrder.some((k, i) => k !== previousOrder[i]);
+
+  folderManageWorkingOrder = newOrder;
+  if (changed) {
+    folderManageDirty = true;
+    updateFolderManageHeaderButtons();
+  }
+
+  folderDragState = null;
+}
+
+// --- 描画前の現在の表示順を "type:id" 配列で取得 ---
+function getCurrentFolderOrderKeys() {
+  const list = document.getElementById('folderManageList');
+  return Array.from(list.querySelectorAll('.folder-card'))
+    .map(el => el.dataset.key);
+}
+
+// --- ヘッダーのキャンセル・確定ボタンの表示を切り替え ---
+function updateFolderManageHeaderButtons() {
+  const cancelBtn = document.getElementById('btnFolderManageCancel');
+  const confirmBtn = document.getElementById('btnFolderManageConfirm');
+  if (folderManageDirty) {
+    cancelBtn.style.display = 'inline-block';
+    confirmBtn.style.display = 'inline-block';
+  } else {
+    cancelBtn.style.display = 'none';
+    confirmBtn.style.display = 'none';
+  }
+}
+
+// --- 並べ替えを保存（DBへ反映） ---
+async function saveFolderManageOrder() {
+  if (!folderManageDirty || folderManageWorkingOrder.length === 0) return;
+
+  const newOrder = folderManageWorkingOrder.map(key => {
+    const [type, id] = key.split(':');
+    return { type, id };
+  });
+  await dbPut('meta', { key: 'folderOrder', value: newOrder });
+  folderOrder = newOrder;
+  // トップ画面で「並べ替え順」が選ばれているかどうかに関わらず、
+  // ユーザーが新しい順序を指定したので custom に切り替える
+  currentSort = 'custom';
+  await markDataUpdated();
+}
+
+// --- 確定ボタン：保存して来た画面へ戻る ---
+async function confirmFolderManageReorder() {
+  await saveFolderManageOrder();
+  folderManageWorkingOrder = [];
+  folderManageDirty = false;
+  toast('並び順を保存しました');
+  goBack();
+}
+
+// --- キャンセルボタン：破棄して来た画面へ戻る ---
+function cancelFolderManageReorder() {
+  folderManageWorkingOrder = [];
+  folderManageDirty = false;
+  // dirty フラグをクリアした状態で goBack を呼ぶことで、
+  // leaveFolderManageScreen() で保存処理が走らずに離脱できる
+  goBack();
+}
+
+// --- 〈ボタン／スマホ戻る用：未確定の並べ替えを保存しつつ画面を離れる ---
+async function leaveFolderManageScreen() {
+  if (folderManageDirty) {
+    await saveFolderManageOrder();
+    toast('並び順を保存しました');
+  }
+  folderManageWorkingOrder = [];
+  folderManageDirty = false;
+}
+
+// ===== ブランド管理 =====
 
 // --- ブランド編集モーダル ---
 function showEditBrandModal(brandId) {
@@ -6378,36 +7012,48 @@ async function updateBrandName(brandId) {
   await markDataUpdated();
   closeModal();
   toast('ブランド名を更新しました');
-  renderBrandManageList();
+  refreshManageScreen();
 }
 
-// --- ブランド削除モーダル(ブランド管理画面用) ---
+// --- ブランド削除モーダル（フォルダ管理画面用） ---
 function showDeleteBrandModalFromManage(brandId) {
   const brand = allBrands.find(b => b.id === brandId);
   if (!brand) return;
   const count = allProducts.filter(p => p.brandId === brandId).length;
-  const countText = count > 0 ? `(商品${count}件も削除されます)` : '';
+  let msg = `「${esc(brand.name)}」を削除しますか？`;
+  if (count > 0) {
+    msg += `<br><br><span style="color:var(--accent);font-size:13px;">このブランドに含まれる ${count} 件の商品は「未分類」になります（商品自体は削除されません）。</span>`;
+  }
   showModal({
-    title: brand.name,
-    content: `<p style="font-size:14px; color:var(--text-light); margin:0;">このブランドを削除しますか？${countText}</p>`,
+    title: 'ブランドを削除',
+    content: msg,
     actions: [
-      { text: '削除', cls: 'modal-delete', action: () => deleteBrandFromManage(brandId) },
-      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal }
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '削除する', cls: 'modal-danger', action: () => deleteBrandFromManage(brandId) }
     ]
   });
 }
 
-// --- ブランド削除の実行(ブランド管理画面用) ---
+// --- ブランド削除の実行（フォルダ管理画面用） ---
+//   商品は削除せず、brandId をクリアして「未分類」状態にする
 async function deleteBrandFromManage(brandId) {
+  // ブランド配下の商品の brandId をクリア
   const products = allProducts.filter(p => p.brandId === brandId);
   for (const p of products) {
-    await dbDelete('products', p.id);
+    p.brandId = null;
+    await dbPut('products', p);
   }
+  // ブランド本体を削除
   await dbDelete('brands', brandId);
+  // folderOrder からも削除（ゴミデータが残らないように）
+  if (Array.isArray(folderOrder)) {
+    folderOrder = folderOrder.filter(f => !(f.type === 'brand' && f.id === brandId));
+    await dbPut('meta', { key: 'folderOrder', value: folderOrder });
+  }
   await markDataUpdated();
   closeModal();
   toast('ブランドを削除しました');
-  renderBrandManageList();
+  refreshManageScreen();
 }
 
 // ===== タグ管理 =====
@@ -6416,35 +7062,6 @@ async function deleteBrandFromManage(brandId) {
 async function loadTags() {
   allTags = await dbGetAll('tags');
   allTags.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
-}
-
-// --- タグ管理一覧を描画 ---
-async function renderTagManageList() {
-  await loadTags();
-  await loadAllData();
-  const container = document.getElementById('tagManageList');
-
-  if (allTags.length === 0) {
-    container.innerHTML = '<div style="font-size:13px;color:var(--text-lighter);padding:12px 0;">タグが登録されていません</div>';
-    return;
-  }
-
-  let html = '';
-  for (const t of allTags) {
-    const count = allProducts.filter(p => (p.tagIds || []).includes(t.id)).length;
-    html += `
-    <div class="cat-item">
-      <div class="cat-item-name">${esc(t.name)}</div>
-      <div class="cat-item-count">${count}件</div>
-      <button class="cat-item-btn" onclick="showEditTagModal('${t.id}')" title="編集">
-        <svg viewBox="0 0 24 24"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-      </button>
-      <button class="cat-item-btn delete" onclick="showDeleteTagModal('${t.id}')" title="削除">
-        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
-      </button>
-    </div>`;
-  }
-  container.innerHTML = html;
 }
 
 // --- タグ追加モーダル ---
@@ -6486,7 +7103,7 @@ async function addTag() {
   await markDataUpdated();
   closeModal();
   toast('タグを追加しました');
-  renderTagManageList();
+  refreshManageScreen();
 }
 
 // --- タグ編集モーダル ---
@@ -6526,7 +7143,7 @@ async function updateTag(tagId) {
   await markDataUpdated();
   closeModal();
   toast('タグ名を更新しました');
-  renderTagManageList();
+  refreshManageScreen();
 }
 
 // --- タグ削除モーダル ---
@@ -6551,17 +7168,24 @@ function showDeleteTagModal(tagId) {
 // --- タグ削除の実行 ---
 async function deleteTag(tagId) {
   await loadAllData();
+  // 該当タグを商品から外す
   for (const p of allProducts) {
     if (p.tagIds && p.tagIds.includes(tagId)) {
       p.tagIds = p.tagIds.filter(id => id !== tagId);
       await dbPut('products', p);
     }
   }
+  // タグ本体を削除
   await dbDelete('tags', tagId);
+  // folderOrder からも削除（ゴミデータが残らないように）
+  if (Array.isArray(folderOrder)) {
+    folderOrder = folderOrder.filter(f => !(f.type === 'tag' && f.id === tagId));
+    await dbPut('meta', { key: 'folderOrder', value: folderOrder });
+  }
   await markDataUpdated();
   closeModal();
   toast('タグを削除しました');
-  renderTagManageList();
+  refreshManageScreen();
 }
 
 
