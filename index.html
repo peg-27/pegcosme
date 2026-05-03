@@ -3242,7 +3242,7 @@ function renderFilterDropdown() {
 }
 
 // --- ソートを適用 ---
-function applySort(sortKey) {
+async function applySort(sortKey) {
   if (currentTab === 'memo') {
     currentMemoSort = sortKey;
     closeAllDropdowns();
@@ -3252,14 +3252,20 @@ function applySort(sortKey) {
     if (currentScreen === 'brand') {
       // トップ画面：フォルダ並びソート
       currentSort = sortKey;
+      // 次回起動時に復元できるようDBに保存
+      await dbPut('meta', { key: 'topSort', value: sortKey });
       renderBrands();
     } else if (currentScreen === 'products') {
       // ブランドフォルダ内：カード並びソート
       currentProductSort = sortKey;
+      // 次回起動時に復元できるようDBに保存
+      await dbPut('meta', { key: 'productSort', value: sortKey });
       renderProducts();
     } else if (currentScreen === 'tagProducts') {
       // タグフォルダ内：カード並びソート
       currentProductSort = sortKey;
+      // 次回起動時に復元できるようDBに保存
+      await dbPut('meta', { key: 'productSort', value: sortKey });
       renderTagProducts();
     }
   }
@@ -3621,7 +3627,7 @@ async function renderBrands() {
     // タグフォルダを先頭にまとめる
     if (tagFolders.length > 0) {
       tagFolders.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-      html += `<div class="folder-group-header">タグ</div>`;
+      html += `<div class="folder-group-header">＃</div>`;
       html += tagFolders.map(renderFolderCard).join('');
     }
 
@@ -4525,6 +4531,8 @@ async function confirmSortMode() {
     isSortMode = false;
     sortModeWorkingOrder = [];
     currentSort = 'custom';
+    // 次回起動時に復元できるようDBに保存
+    await dbPut('meta', { key: 'topSort', value: 'custom' });
     updateHeaderForSortMode();
     renderBrands();
     toast('並び順を保存しました');
@@ -4550,7 +4558,10 @@ async function confirmSortMode() {
   isSortMode = false;
   sortModeWorkingOrder = [];
   await loadAllData();
-  currentSort = 'custom';
+  // フォルダ内画面なので currentProductSort を更新（元コードは currentSort になっていた）
+  currentProductSort = 'custom';
+  // 次回起動時に復元できるようDBに保存
+  await dbPut('meta', { key: 'productSort', value: 'custom' });
   updateHeaderForSortMode();
   if (currentScreen === 'tagProducts') {
     renderTagProducts();
@@ -7025,7 +7036,37 @@ async function renderFolderManageList() {
       return ai - bi;
     });
   } else if (currentSort === 'name_asc') {
-    visibleFolders.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    // === トップ画面と同じ並び順：タグを先頭にまとめ、ブランドはグループ順で並べる ===
+    const tagFolders = visibleFolders.filter(f => f.type === 'tag');
+    const brandFolders = visibleFolders.filter(f => f.type === 'brand');
+
+    // タグは名前順
+    tagFolders.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+
+    // ブランドをグループ（A-Z／あ／か…）に分けて、各グループ内をソートキーで並べる
+    const grouped = {};
+    brandFolders.forEach(f => {
+      const key = getBrandGroupKey(f.name);
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(f);
+    });
+    Object.values(grouped).forEach(arr => {
+      arr.sort((a, b) => {
+        const ka = getBrandSortKey(a.name);
+        const kb = getBrandSortKey(b.name);
+        return ka < kb ? -1 : ka > kb ? 1 : 0;
+      });
+    });
+
+    // グループ順に詰め直す（renderBrands の GROUP_ORDER と揃える）
+    const GROUP_ORDER = ['A-Z', 'あ', 'か', 'さ', 'た', 'な', 'は', 'ま', 'や', 'ら', 'わ', 'その他'];
+    const sortedBrands = [];
+    GROUP_ORDER.forEach(groupKey => {
+      const arr = grouped[groupKey];
+      if (arr && arr.length > 0) sortedBrands.push(...arr);
+    });
+
+    visibleFolders = tagFolders.concat(sortedBrands);
   } else {
     // 価格・日付などは、フォルダ内の商品から代表値を計算
     const [field, order] = currentSort.split('_');
@@ -7259,6 +7300,8 @@ async function saveFolderManageOrder() {
   // トップ画面で「並べ替え順」が選ばれているかどうかに関わらず、
   // ユーザーが新しい順序を指定したので custom に切り替える
   currentSort = 'custom';
+  // 次回起動時に復元できるようDBに保存
+  await dbPut('meta', { key: 'topSort', value: 'custom' });
   await markDataUpdated();
 }
 
@@ -7722,6 +7765,17 @@ async function onAppHiding() {
   await migrateProductCategories();
   await migrateProductImages();
   await loadCategories();
+
+  // 前回保存したトップ画面のソート状態を復元
+  const savedSort = await dbGet('meta', 'topSort');
+  if (savedSort?.value) {
+    currentSort = savedSort.value;
+  }
+  // 前回保存したフォルダ内のカードソート状態を復元
+  const savedProductSort = await dbGet('meta', 'productSort');
+  if (savedProductSort?.value) {
+    currentProductSort = savedProductSort.value;
+  }
 
   // --- キーボード表示時のビューポート調整 ---
   // interactive-widget=resizes-content により、キーボード表示時に
