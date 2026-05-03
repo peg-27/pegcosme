@@ -61,7 +61,7 @@
   --primary-lighter: #f1f4f9;
   --primary-dark: #6b82b0;
   --primary-pale: #b8c6e0;
-  --accent: #E6AAC3;
+  --accent: #D6A3C8;
   --accent-light: #faf0f0;
   --text: #3d3f50;
   --text-light: #7a7e92;
@@ -151,24 +151,41 @@ img { display: block; max-width: 100%; }
      ══════════════════════════════════════════ -->
 <style>
 
-/* --- 上部タイトルバー（PEG COSMEロゴ表示・トップ画面リンク） --- */
+/* --- 上部タイトルバー（PEG COSMEロゴ＋検索ボタン＋設定ボタン） --- */
 .title-bar {
   height: var(--title-bar-h);
   min-height: var(--title-bar-h);
   overflow: hidden;
-  display: flex;
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
   align-items: center;
-  justify-content: center;
+  gap: 4px;
   background: var(--primary);
   position: fixed;
   top: 0; left: 0; right: 0;
   z-index: 100;
-  padding-top: 5px;  
+  padding: 5px 8px 0;
+  transition: background 0.2s ease;
 }
+
+/* --- 検索モード時のタイトルバー（ピンク） --- */
+.title-bar.search-mode {
+  background: var(--accent);
+}
+
+/* --- タイトルバー内の左右スロット（ボタン配置用） --- */
+.title-bar-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- 中央のPEG COSMEロゴ --- */
 .title-bar-link {
   height: 100%;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   font-size: 14px;
   font-weight: 700;
   color: #fff;
@@ -402,22 +419,34 @@ img { display: block; max-width: 100%; }
 
 <!-- ----- #HEADER HTML ----- -->
 
-<!-- タイトルバー：PEG COSMEロゴ。タップでブランド一覧（トップ画面）へ -->
+<!-- タイトルバー：1段目に検索ボタン・PEG COSMEロゴ・設定ボタンを配置 -->
 <div class="title-bar" id="titleBar">
+  <!-- 1段目左：検索ボタン or 戻るボタン（検索モード解除用） -->
+  <div class="title-bar-slot">
+    <button class="header-btn" id="btnSearch" onclick="toggleSearchMode()" title="検索" style="display:none">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
+    <button class="header-back" id="btnSearchClose" onclick="closeSearchMode()" title="検索を閉じる">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+  </div>
+  <!-- 1段目中央：PEG COSMEロゴ（タップでトップ画面へ） -->
   <button class="title-bar-link" onclick="goToTop()">PEG COSME</button>
+  <!-- 1段目右：設定ボタン（縦三点） -->
+  <div class="title-bar-slot">
+    <button class="header-btn" id="btnSettings" onclick="openSettingsModal()" title="設定">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="5" r="2" fill="#fff" stroke="none"/>
+        <circle cx="12" cy="12" r="2" fill="#fff" stroke="none"/>
+        <circle cx="12" cy="19" r="2" fill="#fff" stroke="none"/>
+      </svg>
+    </button>
+  </div>
 </div>
 
-<!-- ヘッダー：戻るボタン、検索ボタン、検索解除ボタン、タイトル、件数、フィルター、ソート、設定 -->
+<!-- ヘッダー：戻るボタン、タイトル、件数、フィルター、表示切替、ソート、テキストボタン -->
 <div class="header">
   <button class="header-back" id="btnBack" onclick="goBack()">
-    <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
-  </button>
-  <!-- 検索ボタン（トップ画面・メモ画面で表示） -->
-  <button class="header-btn" id="btnSearch" onclick="toggleSearchMode()" title="検索" style="display:none">
-    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-  </button>
-  <!-- 検索モード解除ボタン（検索モード中のみ表示） -->
-  <button class="header-back" id="btnSearchClose" onclick="closeSearchMode()" title="検索を閉じる">
     <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
   </button>
   <div class="header-title" id="headerTitle"></div>
@@ -426,6 +455,10 @@ img { display: block; max-width: 100%; }
   <!-- カテゴリフィルターボタン -->
   <button class="header-btn" id="btnFilter" onclick="toggleFilterDropdown()" title="カテゴリ" style="display:none">
     <svg viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+  </button>
+  <!-- 表示切替ボタン（リスト⇔グリッド） -->
+  <button class="header-btn" id="btnViewMode" onclick="toggleViewMode()" title="表示切替" style="display:none">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
   </button>
   <!-- ソートボタン -->
   <button class="header-btn" id="btnSort" onclick="toggleSortDropdown()" title="並び替え" style="display:none">
@@ -439,19 +472,11 @@ img { display: block; max-width: 100%; }
   <!-- 商品フォーム用：保存ボタン -->
   <button class="header-text-btn" id="btnFormSave" onclick="submitProduct()" style="display:none">保存</button>
   <!-- 並べ替えモード用：キャンセル・確定ボタン -->
-<button class="header-text-btn header-text-btn-mute" id="btnSortCancel" onclick="cancelSortMode()" style="display:none">キャンセル</button>
-<button class="header-text-btn" id="btnSortConfirm" onclick="confirmSortMode()" style="display:none">確定</button>
-<!-- フォルダ管理画面用：キャンセル・確定ボタン（並べ替え操作後のみ表示） -->
-<button class="header-text-btn header-text-btn-mute" id="btnFolderManageCancel" onclick="cancelFolderManageReorder()" style="display:none">キャンセル</button>
-<button class="header-text-btn" id="btnFolderManageConfirm" onclick="confirmFolderManageReorder()" style="display:none">確定</button>
-  <!-- 設定ボタン（縦三点） -->
-  <button class="header-btn" id="btnSettings" onclick="openSettingsModal()" title="設定">
-    <svg viewBox="0 0 24 24">
-      <circle cx="12" cy="5" r="2" fill="#fff" stroke="none"/>
-      <circle cx="12" cy="12" r="2" fill="#fff" stroke="none"/>
-      <circle cx="12" cy="19" r="2" fill="#fff" stroke="none"/>
-    </svg>
-  </button>
+  <button class="header-text-btn header-text-btn-mute" id="btnSortCancel" onclick="cancelSortMode()" style="display:none">キャンセル</button>
+  <button class="header-text-btn" id="btnSortConfirm" onclick="confirmSortMode()" style="display:none">確定</button>
+  <!-- フォルダ管理画面用：キャンセル・確定ボタン -->
+  <button class="header-text-btn header-text-btn-mute" id="btnFolderManageCancel" onclick="cancelFolderManageReorder()" style="display:none">キャンセル</button>
+  <button class="header-text-btn" id="btnFolderManageConfirm" onclick="confirmFolderManageReorder()" style="display:none">確定</button>
 </div>
 
 <!-- ドロップダウン用オーバーレイ（タップで閉じる） -->
@@ -744,6 +769,56 @@ mark.hl {
 .product-brand-label {
   font-size: 11px; color: var(--text-lighter);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* --- グリッド表示 --- */
+.product-list.grid-view {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.product-list.grid-view .product-card {
+  flex-direction: column;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+.product-list.grid-view .product-thumb {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 0;
+}
+.product-list.grid-view .product-thumb svg {
+  width: 32px; height: 32px;
+}
+.product-list.grid-view .product-info {
+  padding: 6px 8px 8px;
+  width: 100%;
+  box-sizing: border-box;
+  gap: 2px;
+  justify-content: flex-start;
+}
+.product-list.grid-view .product-brand-label {
+  font-size: 10px;
+  line-height: 1.3;
+}
+.product-list.grid-view .product-name {
+  font-size: 12px;
+  white-space: normal;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.3;
+  word-break: break-word;
+}
+.product-list.grid-view .product-category {
+  font-size: 10px;
+  padding: 1px 5px;
+}
+.product-list.grid-view .product-price {
+  display: none;
 }
 
 /* --- 並べ替えモード --- */
@@ -1297,6 +1372,28 @@ mark.hl {
 .brand-pick-name { flex: 1; }
 .brand-pick-action { color: var(--primary); }
 
+/* --- カテゴリ選択トリガーボタン --- */
+.category-pick-trigger {
+  height: 42px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 12px; font-size: 15px;
+  background: var(--card-bg); color: var(--text);
+  text-align: left;
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%;
+}
+.category-pick-trigger::after {
+  content: '';
+  width: 12px; height: 12px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b3' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  flex-shrink: 0;
+}
+.category-pick-trigger.placeholder {
+  color: #bcc5d0;
+}
+
 /* --- プレースホルダー類の文字色を薄く統一 --- */
 .form-input::placeholder,
 .form-textarea::placeholder,
@@ -1333,34 +1430,38 @@ mark.hl {
       <label class="form-label form-required">商品名</label>
       <input type="text" class="form-input" id="formName" placeholder="例：スーパーサンシールド ブライトフィット" autocomplete="off">
     </div>
+
     <!-- カテゴリ選択（メイク・スキンケア） -->
-    <div class="form-group">
-      <label class="form-label">カテゴリ</label>
-      <div style="display:flex; gap:8px; align-items:center;">
-        <select class="form-select" id="formCategoryMakeup" style="flex:1;">
-          <option value="">メイク</option>
-        </select>
-        <button type="button" onclick="openAddCategoryModal('makeup')" style="
-          width:42px; height:42px; flex-shrink:0;
-          border:1px solid var(--border); border-radius:var(--radius-sm);
-          background:var(--card-bg); color:var(--primary);
-          font-size:22px; font-weight:600;
-          display:flex; align-items:center; justify-content:center;
-        ">＋</button>
-      </div>
-      <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
-        <select class="form-select" id="formCategorySkincare" style="flex:1;">
-          <option value="">スキンケア</option>
-        </select>
-        <button type="button" onclick="openAddCategoryModal('skincare')" style="
-          width:42px; height:42px; flex-shrink:0;
-          border:1px solid var(--border); border-radius:var(--radius-sm);
-          background:var(--card-bg); color:var(--primary);
-          font-size:22px; font-weight:600;
-          display:flex; align-items:center; justify-content:center;
-        ">＋</button>
-      </div>
-    </div>
+<div class="form-group">
+  <label class="form-label">カテゴリ</label>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <button type="button" class="category-pick-trigger placeholder" id="formCategoryMakeupTrigger" onclick="openCategoryPickModal('makeup')" style="flex:1;">
+      <span id="formCategoryMakeupLabel">メイク（未選択）</span>
+    </button>
+    <select id="formCategoryMakeup" style="display:none"></select>
+    <button type="button" onclick="openAddCategoryModal('makeup')" style="
+      width:42px; height:42px; flex-shrink:0;
+      border:1px solid var(--border); border-radius:var(--radius-sm);
+      background:var(--card-bg); color:var(--primary);
+      font-size:22px; font-weight:600;
+      display:flex; align-items:center; justify-content:center;
+    ">＋</button>
+  </div>
+  <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+    <button type="button" class="category-pick-trigger placeholder" id="formCategorySkincareTrigger" onclick="openCategoryPickModal('skincare')" style="flex:1;">
+      <span id="formCategorySkincareLabel">スキンケア（未選択）</span>
+    </button>
+    <select id="formCategorySkincare" style="display:none"></select>
+    <button type="button" onclick="openAddCategoryModal('skincare')" style="
+      width:42px; height:42px; flex-shrink:0;
+      border:1px solid var(--border); border-radius:var(--radius-sm);
+      background:var(--card-bg); color:var(--primary);
+      font-size:22px; font-weight:600;
+      display:flex; align-items:center; justify-content:center;
+    ">＋</button>
+  </div>
+</div>
+
 <!-- タグ選択（複数選択可） -->
     <div class="form-group">
       <label class="form-label">タグ</label>
@@ -2337,13 +2438,17 @@ let formImages = [];            // フォームで選択された画像のBase64
 let isPopState = false;         // popstateイベント処理中フラグ
 let searchOpenedAtDetail = false; // 検索モードを詳細画面で開始したか(戻る時の挙動制御用)
 
+// 商品一覧の表示モード（list / grid）
+let currentViewMode = localStorage.getItem('pegCosmeViewMode') || 'list';
+
 // --- スクロール位置保存用 ---
 let scrollPositions = {};       // 一覧画面ごとのスクロール位置を保存
 
 // --- ソート・フィルター状態 ---
-let currentSort = 'createdAt_desc';       // カードタブのソート(デフォルト：登録日新しい順)
-let currentMemoSort = 'date_desc';        // メモタブのソート(デフォルト：日付新しい順)
-let currentCategoryFilter = null;         // カテゴリフィルター(null＝すべて)
+let currentSort = 'createdAt_desc';        // トップ画面（ブランド一覧）のフォルダ並びソート
+let currentProductSort = 'createdAt_desc'; // フォルダ内（ブランド/タグ）のカード並びソート
+let currentMemoSort = 'date_desc';         // メモタブのソート(デフォルト：日付新しい順)
+let currentCategoryFilter = null;          // カテゴリフィルター(null＝すべて)
 
 // --- 並べ替えモード ---
 let isSortMode = false;           // 並べ替えモード中かどうか
@@ -2427,11 +2532,13 @@ function showScreen(name, pushHistory = true) {
     document.body.classList.remove('no-title-bar');
   }
 
-  // 画面遷移時：検索モードのヘッダー状態をリセット(ヘッダー背景色・検索バー・モード用ボタン)
+  // 画面遷移時：検索モードのヘッダー状態をリセット(1段目・2段目両方の背景色・検索バー・モード用ボタン)
   // ※ searchInput.value は一覧画面に「前進」する時のみクリア(戻る時は保持して検索モードを復元する)
   const headerEl = document.querySelector('.header');
+  const titleBarEl = document.querySelector('.title-bar');
   if (headerEl.classList.contains('search-mode')) {
     headerEl.classList.remove('search-mode');
+    titleBarEl.classList.remove('search-mode');
     document.getElementById('searchBar').classList.remove('active');
     document.getElementById('btnSearchClose').style.display = 'none';
     document.getElementById('searchTotalCount').style.display = 'none';
@@ -2459,6 +2566,7 @@ function showScreen(name, pushHistory = true) {
   const title = document.getElementById('headerTitle');
   const sortBtn = document.getElementById('btnSort');
   const filterBtn = document.getElementById('btnFilter');
+  const viewModeBtn = document.getElementById('btnViewMode');
   const detailEditBtn = document.getElementById('btnDetailEdit');
   const detailDeleteBtn = document.getElementById('btnDetailDelete');
   const memoSaveBtn = document.getElementById('btnMemoSave');
@@ -2478,6 +2586,7 @@ function showScreen(name, pushHistory = true) {
   settingsBtn.style.display = 'flex';
   sortBtn.style.display = 'none';
   filterBtn.style.display = 'none';
+  if (viewModeBtn) viewModeBtn.style.display = 'none';
   detailEditBtn.style.display = 'none';
   detailDeleteBtn.style.display = 'none';
   memoSaveBtn.style.display = 'none';
@@ -2515,7 +2624,6 @@ function showScreen(name, pushHistory = true) {
       // 中央バッジを使うので、タイトル側に余白を確保
       headerEl.classList.add('title-with-center-count');
       // フォルダ並び順が未設定なのに custom が選ばれている状態なら、デフォルトに戻す
-      // (folderOrder はメモリ上の変数なので await 不要。renderBrands 内で最新化される)
       if (currentSort === 'custom' && (!Array.isArray(folderOrder) || folderOrder.length === 0)) {
         currentSort = 'createdAt_desc';
       }
@@ -2531,9 +2639,9 @@ function showScreen(name, pushHistory = true) {
       title.textContent = '';
       sortBtn.style.display = 'flex';
       filterBtn.style.display = 'flex';
-      // 中央の件数バッジは使わない(タイトルに件数を含めるため)
-      // ※ totalCount.style.display は既に 'none' のまま
-      shouldResetSortForBrand = true;
+      if (viewModeBtn) viewModeBtn.style.display = 'flex';
+      // 前進時のみソート再評価フラグを立てる（詳細画面から戻る時はソートを維持）
+      if (pushHistory) shouldResetSortForBrand = true;
       renderProducts();
       break;
     case 'tagProducts':
@@ -2545,7 +2653,9 @@ function showScreen(name, pushHistory = true) {
       title.textContent = '';
       sortBtn.style.display = 'flex';
       filterBtn.style.display = 'flex';
-      shouldResetSortForBrand = true;
+      if (viewModeBtn) viewModeBtn.style.display = 'flex';
+      // 前進時のみソート再評価フラグを立てる（詳細画面から戻る時はソートを維持）
+      if (pushHistory) shouldResetSortForBrand = true;
       renderTagProducts();
       break;
     case 'detail':
@@ -2624,7 +2734,6 @@ function showScreen(name, pushHistory = true) {
       settingsBtn.style.display = 'none';
       title.textContent = 'フォルダ管理';
       // フォルダ管理画面用のキャンセル・確定ボタンは初期非表示
-      // （並べ替え操作で順序が変わった時だけ表示される）
       document.getElementById('btnFolderManageCancel').style.display = 'none';
       document.getElementById('btnFolderManageConfirm').style.display = 'none';
       initFolderManage();
@@ -2652,6 +2761,12 @@ function showScreen(name, pushHistory = true) {
       // 一覧画面で開始した検索 → 検索モードを復元
       openSearchMode(false);
     }
+  }
+
+  // 検索モード継続：詳細画面に遷移してきた時もクエリが残っていれば検索モードを継続表示
+  // （前進・戻る両対応。一覧→詳細でカードをタップした時もヘッダーがピンクのまま継続する）
+  if ((name === 'detail' || name === 'memoDetail') && document.getElementById('searchInput').value.trim() !== '') {
+    openSearchMode(false);
   }
 }
 
@@ -3001,7 +3116,16 @@ function renderSortDropdown() {
   const dd = document.getElementById('sortDropdown');
   const isMemo = (currentTab === 'memo');
   const options = isMemo ? MEMO_SORT_OPTIONS : SORT_OPTIONS;
-  const active = isMemo ? currentMemoSort : currentSort;
+
+  // 現在アクティブなソートキーを画面ごとに取得
+  let active;
+  if (isMemo) {
+    active = currentMemoSort;
+  } else if (currentScreen === 'products' || currentScreen === 'tagProducts') {
+    active = currentProductSort;  // フォルダ内画面
+  } else {
+    active = currentSort;          // トップ画面（brand）
+  }
 
   let html = '<div class="dropdown-section-title">並び替え</div>';
 
@@ -3113,11 +3237,20 @@ function applySort(sortKey) {
     closeAllDropdowns();
     renderMemos();
   } else {
-    currentSort = sortKey;
     closeAllDropdowns();
-    if (currentScreen === 'brand') renderBrands();
-    else if (currentScreen === 'products') renderProducts();
-    else if (currentScreen === 'tagProducts') renderTagProducts();
+    if (currentScreen === 'brand') {
+      // トップ画面：フォルダ並びソート
+      currentSort = sortKey;
+      renderBrands();
+    } else if (currentScreen === 'products') {
+      // ブランドフォルダ内：カード並びソート
+      currentProductSort = sortKey;
+      renderProducts();
+    } else if (currentScreen === 'tagProducts') {
+      // タグフォルダ内：カード並びソート
+      currentProductSort = sortKey;
+      renderTagProducts();
+    }
   }
 }
 
@@ -3716,6 +3849,42 @@ function openTag(tagId) {
    #PRODUCT_JS 商品一覧ロジック
    ══════════════════════════════════════════ */
 
+// --- 表示モード（リスト⇔グリッド）切替 ---
+function toggleViewMode() {
+  currentViewMode = currentViewMode === 'list' ? 'grid' : 'list';
+  localStorage.setItem('pegCosmeViewMode', currentViewMode);
+  applyViewMode();
+}
+
+// --- 現在の表示モードを画面に反映 ---
+function applyViewMode() {
+  const list = document.getElementById('productList');
+  if (list) {
+    if (currentViewMode === 'grid') {
+      list.classList.add('grid-view');
+    } else {
+      list.classList.remove('grid-view');
+    }
+  }
+  updateViewModeIcon();
+}
+
+// --- 表示切替ボタンのアイコンを現在のモードに合わせて更新 ---
+function updateViewModeIcon() {
+  const btn = document.getElementById('btnViewMode');
+  if (!btn) return;
+  if (currentViewMode === 'grid') {
+    // グリッド表示中 → タップするとリストへ → リストアイコン（横長の長方形2つ縦並び）
+    btn.innerHTML = `<svg viewBox="0 0 24 24">
+  <rect x="3" y="4" width="18" height="6" fill="none" stroke="white" stroke-width="2"/>
+  <rect x="3" y="14" width="18" height="6" fill="none" stroke="white" stroke-width="2"/>
+</svg>`;
+  } else {
+    // リスト表示中 → タップするとグリッドへ → グリッドアイコン
+    btn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`;
+  }
+}
+
 // --- 選択中ブランドの商品一覧を描画 ---
 async function renderProducts() {
   await loadAllData();
@@ -3726,14 +3895,14 @@ async function renderProducts() {
     return;
   }
 
-  // ブランド切替直後の currentSort 調整
+  // ブランド切替直後の currentProductSort 調整
   if (shouldResetSortForBrand) {
     shouldResetSortForBrand = false;
     const brand = allBrands.find(b => b.id === currentBrandId);
     if (brand?.sortOrder && brand.sortOrder.length > 0) {
-      currentSort = 'custom';
-    } else if (currentSort === 'custom') {
-      currentSort = 'createdAt_desc';
+      currentProductSort = 'custom';
+    } else if (currentProductSort === 'custom') {
+      currentProductSort = 'createdAt_desc';
     }
   }
 
@@ -3780,7 +3949,7 @@ async function renderProducts() {
   const curBrand = allBrands.find(b => b.id === currentBrandId);
   const brandSortOrder = curBrand?.sortOrder || null;
 
-  products = sortProducts(products, currentSort, brandSortOrder);
+  products = sortProducts(products, currentProductSort, brandSortOrder);
 
   if (products.length === 0) {
     list.innerHTML = '';
@@ -3824,6 +3993,7 @@ async function renderProducts() {
   }));
 
   list.innerHTML = cardHtmlList.join('');
+  applyViewMode();
 }
 
 // --- 選択中タグの商品一覧を描画 ---
@@ -3836,14 +4006,14 @@ async function renderTagProducts() {
     return;
   }
 
-  // タグ切替直後の currentSort 調整（ブランド画面と同じフラグを流用）
+  // タグ切替直後の currentProductSort 調整（ブランド画面と同じフラグを流用）
   if (shouldResetSortForBrand) {
     shouldResetSortForBrand = false;
     const tag = allTags.find(t => t.id === currentTagId);
     if (tag?.cardOrder && tag.cardOrder.length > 0) {
-      currentSort = 'custom';
-    } else if (currentSort === 'custom') {
-      currentSort = 'createdAt_desc';
+      currentProductSort = 'custom';
+    } else if (currentProductSort === 'custom') {
+      currentProductSort = 'createdAt_desc';
     }
   }
 
@@ -3895,7 +4065,7 @@ async function renderTagProducts() {
   const curTag = allTags.find(t => t.id === currentTagId);
   const tagSortOrder = curTag?.cardOrder || null;
 
-  products = sortProducts(products, currentSort, tagSortOrder);
+  products = sortProducts(products, currentProductSort, tagSortOrder);
 
   if (products.length === 0) {
     list.innerHTML = '';
@@ -3944,6 +4114,7 @@ async function renderTagProducts() {
   }));
 
   list.innerHTML = cardHtmlList.join('');
+  applyViewMode();
 }
 
 // --- 商品をタップ → 詳細画面へ ---
@@ -4600,6 +4771,10 @@ function navigateDetail(direction) {
   }, { once: true });
 
   renderDetail();
+  // 検索モード中なら、移動後のカードのヒット件数を再計算して表示更新
+  if (document.querySelector('.header').classList.contains('search-mode')) {
+    updateDetailHitCount();
+  }
   document.getElementById('mainArea').scrollTop = 0;
 }
 
@@ -4994,40 +5169,32 @@ async function addTagFromForm() {
   toast(`「${name}」を追加しました`);
 }
 
-// --- カテゴリ選択肢を更新（グループ別に2つのドロップダウンへ） ---
+// --- カテゴリ選択肢を更新（hidden selectのvalue保持＋トリガーラベル更新） ---
 function refreshCategorySelects(selectedMakeup, selectedSkincare) {
   const makeupSel = document.getElementById('formCategoryMakeup');
   const skincareSel = document.getElementById('formCategorySkincare');
 
-  makeupSel.innerHTML = '<option value="">メイク（未選択）</option>';
-  skincareSel.innerHTML = '<option value="">スキンケア（未選択）</option>';
+  // hidden selectには値保持のために最低限のoptionだけ生成
+  let makeupHtml = '<option value=""></option>';
+  let skincareHtml = '<option value=""></option>';
 
   allCategories.forEach(c => {
     if (c.group === 'makeup') {
-      makeupSel.innerHTML += `<option value="${esc(c.name)}">${esc(c.name)}</option>`;
+      makeupHtml += `<option value="${esc(c.name)}"></option>`;
     } else if (c.group === 'skincare') {
-      skincareSel.innerHTML += `<option value="${esc(c.name)}">${esc(c.name)}</option>`;
+      skincareHtml += `<option value="${esc(c.name)}"></option>`;
     }
   });
+
+  makeupSel.innerHTML = makeupHtml;
+  skincareSel.innerHTML = skincareHtml;
 
   if (selectedMakeup) makeupSel.value = selectedMakeup;
   if (selectedSkincare) skincareSel.value = selectedSkincare;
 
-  updateCategoryPlaceholder(makeupSel);
-  updateCategoryPlaceholder(skincareSel);
+  updateCategoryTriggerLabel('makeup');
+  updateCategoryTriggerLabel('skincare');
 }
-
-// --- カテゴリselect のプレースホルダー表示切替 ---
-function updateCategoryPlaceholder(sel) {
-  sel.classList.toggle('placeholder', sel.value === '');
-}
-
-// --- カテゴリselect の変更時にプレースホルダーを更新 ---
-document.addEventListener('change', (e) => {
-  if (e.target.id === 'formCategoryMakeup' || e.target.id === 'formCategorySkincare') {
-    updateCategoryPlaceholder(e.target);
-  }
-});
 
 // --- カテゴリ追加モーダルを開く（フォーム画面用） ---
 function openAddCategoryModal(group) {
@@ -5067,6 +5234,91 @@ async function addCategoryFromForm(group) {
   refreshCategorySelects(curMakeup, curSkincare);
   closeModal();
   toast(`「${name}」を追加しました`);
+}
+
+// --- カテゴリ選択モーダル用のバッファ（モーダル内の選択状態） ---
+let categoryPickGroup = ''; // 'makeup' または 'skincare'
+let categoryPickBuffer = '';
+
+// --- カテゴリ選択モーダルを開く ---
+function openCategoryPickModal(group) {
+  categoryPickGroup = group;
+  const sel = document.getElementById(group === 'makeup' ? 'formCategoryMakeup' : 'formCategorySkincare');
+  categoryPickBuffer = sel ? (sel.value || '') : '';
+  const groupLabel = group === 'skincare' ? 'スキンケア' : 'メイク';
+  showModal({
+    title: `${groupLabel}カテゴリを選択`,
+    content: `<div class="brand-pick-list" id="categoryPickList"></div>`,
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '完了', cls: 'modal-primary', action: applyCategoryPick }
+    ]
+  });
+  renderCategoryPickList();
+}
+
+// --- カテゴリ選択モーダル内のリストを描画 ---
+function renderCategoryPickList() {
+  const container = document.getElementById('categoryPickList');
+  if (!container) return;
+  const groupLabel = categoryPickGroup === 'skincare' ? 'スキンケア' : 'メイク';
+  let html = '';
+
+  // 未選択（先頭）
+  const noneSelected = categoryPickBuffer === '';
+  html += `<button type="button" class="brand-pick-item ${noneSelected ? 'selected' : ''}" onclick="selectCategoryPick('')">
+    <span class="brand-pick-radio"></span>
+    <span class="brand-pick-name">${groupLabel}（未選択）</span>
+  </button>`;
+
+  // 該当グループのカテゴリ一覧
+  allCategories
+    .filter(c => c.group === categoryPickGroup)
+    .forEach(c => {
+      const selected = categoryPickBuffer === c.name;
+      html += `<button type="button" class="brand-pick-item ${selected ? 'selected' : ''}" onclick="selectCategoryPick('${c.id}')">
+        <span class="brand-pick-radio"></span>
+        <span class="brand-pick-name">${esc(c.name)}</span>
+      </button>`;
+    });
+
+  container.innerHTML = html;
+}
+
+// --- カテゴリ選択モーダル内で項目をタップ ---
+function selectCategoryPick(catId) {
+  if (!catId) {
+    categoryPickBuffer = '';
+  } else {
+    const cat = allCategories.find(c => c.id === catId);
+    if (cat) categoryPickBuffer = cat.name;
+  }
+  renderCategoryPickList();
+}
+
+// --- 「完了」ボタンでバッファを実際の選択状態に反映 ---
+function applyCategoryPick() {
+  const sel = document.getElementById(categoryPickGroup === 'makeup' ? 'formCategoryMakeup' : 'formCategorySkincare');
+  if (sel) sel.value = categoryPickBuffer;
+  closeModal();
+  updateCategoryTriggerLabel(categoryPickGroup);
+}
+
+// --- カテゴリトリガーボタンのラベルを更新 ---
+function updateCategoryTriggerLabel(group) {
+  const sel = document.getElementById(group === 'makeup' ? 'formCategoryMakeup' : 'formCategorySkincare');
+  const label = document.getElementById(group === 'makeup' ? 'formCategoryMakeupLabel' : 'formCategorySkincareLabel');
+  const trigger = document.getElementById(group === 'makeup' ? 'formCategoryMakeupTrigger' : 'formCategorySkincareTrigger');
+  if (!sel || !label || !trigger) return;
+  const v = sel.value;
+  const groupLabel = group === 'skincare' ? 'スキンケア' : 'メイク';
+  if (!v) {
+    label.textContent = `${groupLabel}（未選択）`;
+    trigger.classList.add('placeholder');
+  } else {
+    label.textContent = v;
+    trigger.classList.remove('placeholder');
+  }
 }
 
 // --- ブランド名のグループキーを判定（'A-Z' または 'あ'〜'わ'、その他） ---
@@ -5612,13 +5864,12 @@ async function submitProduct() {
 
 // --- フォーム入力時のスクロール位置補正 ---
 document.getElementById('screenForm').addEventListener('focus', (e) => {
-  if (e.target.matches('input, textarea, select')) {
+  if (e.target.matches('input, textarea')) {
     setTimeout(() => {
       e.target.scrollIntoView({ block: 'nearest', behavior: 'instant' });
     }, 350);
   }
 }, true);
-
 
 /* ══════════════════════════════════════════
    #INGREDIENT 成分整形補助
@@ -6044,14 +6295,15 @@ function toggleSearchMode() {
   }
 }
 
-// --- 検索モードを開く（ヘッダーをピンクのナビバーに、検索バー表示） ---
+// --- 検索モードを開く（ヘッダー全体をピンクのナビバーに、検索バー表示） ---
 // pushHistory: 履歴に追加するか（trueなら新規、falseなら復元）
 function openSearchMode(pushHistory = true) {
   const header = document.querySelector('.header');
   if (header.classList.contains('search-mode')) return;
 
-  // ヘッダーを検索ナビバーに切り替え
+  // ヘッダーを検索ナビバーに切り替え（1段目・2段目両方をピンクに）
   header.classList.add('search-mode');
+  document.querySelector('.title-bar').classList.add('search-mode');
 
   // 検索バー表示
   document.getElementById('searchBar').classList.add('active');
@@ -6090,8 +6342,9 @@ function closeSearchMode() {
   const header = document.querySelector('.header');
   if (!header.classList.contains('search-mode')) return;
 
-  // ヘッダーを通常モードに戻す
+  // ヘッダーを通常モードに戻す（1段目・2段目両方）
   header.classList.remove('search-mode');
+  document.querySelector('.title-bar').classList.remove('search-mode');
 
   // 検索バー非表示＆クリア
   document.getElementById('searchBar').classList.remove('active');
@@ -6106,9 +6359,9 @@ function closeSearchMode() {
   if (currentScreen === 'brand' || currentScreen === 'memo') {
     document.getElementById('btnSearch').style.display = 'flex';
     document.getElementById('headerTotalCount').style.display = 'block';
-  } else if (currentScreen === 'products') {
+  } else if (currentScreen === 'products' || currentScreen === 'tagProducts') {
+    // 商品一覧画面では中央の件数バッジは使わない（タイトルに件数を含めるため）
     document.getElementById('btnSearch').style.display = 'flex';
-    document.getElementById('headerTotalCount').style.display = 'block';
   } else if (currentScreen === 'detail' || currentScreen === 'memoDetail') {
     document.getElementById('btnSearch').style.display = 'flex';
   }
@@ -6120,6 +6373,7 @@ function closeSearchMode() {
   if (currentTab === 'card') {
     if (currentScreen === 'brand') renderBrands();
     else if (currentScreen === 'products') renderProducts();
+    else if (currentScreen === 'tagProducts') renderTagProducts();
     else if (currentScreen === 'detail') renderDetail();
   } else {
     if (currentScreen === 'memo') renderMemos();
@@ -6135,6 +6389,7 @@ function onSearch() {
   if (currentTab === 'card') {
     if (currentScreen === 'brand') renderBrands();
     else if (currentScreen === 'products') renderProducts();
+    else if (currentScreen === 'tagProducts') renderTagProducts();
     else if (currentScreen === 'detail') {
       renderDetail();
       updateDetailHitCount();
