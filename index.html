@@ -542,6 +542,14 @@ img { display: block; max-width: 100%; }
 }
 .search-wrap input::placeholder { color: var(--text-lighter); }
 
+/* --- 検索バー入力中の背景色（画面によって色を分ける） --- */
+.search-wrap.is-list-search {
+  background: #EDF3FA;  /* 一覧画面用：薄ピンク */
+}
+.search-wrap.is-detail-search {
+  background: #FAEDF7;  /* 詳細画面用：薄クリーム */
+}
+
 /* --- 検索ヒット件数表示（検索バー内、×ボタンの左） --- */
 .search-hit-count {
   display: none;
@@ -600,7 +608,7 @@ img { display: block; max-width: 100%; }
 
 /* --- 検索ハイライト --- */
 mark.hl {
-  background: #ffe066;
+  background: #FF9ECD;
   color: inherit;
   padding: 0 1px;
   border-radius: 2px;
@@ -6170,6 +6178,9 @@ async function deleteMemo() {
       const idx = memos.findIndex(m => m.id === currentMemoId);
       if (idx === -1) return;
 
+      // 検索モード中かどうかを判定（移動後にヒット件数を更新するため）
+      const isSearchMode = document.querySelector('.header').classList.contains('search-mode');
+
       if (dx < 0) {
         // 左スワイプ → 次のメモ（リスト下方向）
         if (idx < memos.length - 1) {
@@ -6178,6 +6189,8 @@ async function deleteMemo() {
           // タイトルを即座に更新（描画遅延によるチラつき防止）
           document.getElementById('headerTitle').textContent = next.title || 'メモ詳細';
           renderMemoDetail();
+          // 検索モード中なら、移動後のメモのヒット件数を再計算して表示更新
+          if (isSearchMode) updateDetailHitCount();
           document.getElementById('mainArea').scrollTop = 0;
         } else {
           toast('最後のメモです');
@@ -6189,6 +6202,8 @@ async function deleteMemo() {
           currentMemoId = prev.id;
           document.getElementById('headerTitle').textContent = prev.title || 'メモ詳細';
           renderMemoDetail();
+          // 検索モード中なら、移動後のメモのヒット件数を再計算して表示更新
+          if (isSearchMode) updateDetailHitCount();
           document.getElementById('mainArea').scrollTop = 0;
         } else {
           toast('最初のメモです');
@@ -6267,6 +6282,23 @@ function countMemoHits(memo, query) {
   }, 0);
 }
 
+// --- 検索バーの背景色を、入力有無と画面に応じて切り替え ---
+function updateSearchBarColor() {
+  const searchWrap = document.querySelector('.search-wrap');
+  if (!searchWrap) return;
+  const query = document.getElementById('searchInput').value;
+  // いったん両方のクラスを外す
+  searchWrap.classList.remove('is-list-search', 'is-detail-search');
+  // 入力が空なら色なし
+  if (query.length === 0) return;
+  // 画面に応じてクラスを付与
+  if (currentScreen === 'detail' || currentScreen === 'memoDetail') {
+    searchWrap.classList.add('is-detail-search');
+  } else {
+    searchWrap.classList.add('is-list-search');
+  }
+}
+
 // --- 詳細画面用：現在の対象データのヒット数を検索バー内に表示 ---
 function updateDetailHitCount() {
   const query = document.getElementById('searchInput').value.trim();
@@ -6335,6 +6367,9 @@ function openSearchMode(pushHistory = true) {
       updateDetailHitCount();
     }
   }
+
+  // 検索バー背景色を更新（クエリが残っていれば画面に応じた色を付与）
+  updateSearchBarColor();
 }
 
 // --- 検索モードを閉じる ---
@@ -6369,6 +6404,9 @@ function closeSearchMode() {
   // 検索開始画面フラグをリセット
   searchOpenedAtDetail = false;
 
+  // 検索バー背景色を解除（クエリがクリアされたので無色に戻る）
+  updateSearchBarColor();
+
   // 検索結果を解除して再描画（ハイライトをクリア）
   if (currentTab === 'card') {
     if (currentScreen === 'brand') renderBrands();
@@ -6401,6 +6439,9 @@ function onSearch() {
       updateDetailHitCount();
     }
   }
+
+  // 検索バー背景色を更新（入力有無と画面に応じて）
+  updateSearchBarColor();
 }
 
 // --- 検索欄をクリア ---
