@@ -2550,7 +2550,10 @@ function showScreen(name, pushHistory = true) {
     document.getElementById('searchBar').classList.remove('active');
     document.getElementById('btnSearchClose').style.display = 'none';
     document.getElementById('searchTotalCount').style.display = 'none';
+    // ステータスバー色もブルーに戻す
+    updateThemeColor('normal');
   }
+
   // 一覧画面に「前進」する時のみ検索クエリをクリア
   if (pushHistory && (name === 'brand' || name === 'products' || name === 'tagProducts' || name === 'memo')) {
     document.getElementById('searchInput').value = '';
@@ -6282,6 +6285,18 @@ function countMemoHits(memo, query) {
   }, 0);
 }
 
+// --- ステータスバー（PWAテーマカラー）の色を切り替え ---
+// mode: 'normal' = 通常時のブルー、'search' = 検索モード時のピンク
+function updateThemeColor(mode) {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) return;
+  if (mode === 'search') {
+    meta.setAttribute('content', '#D6A3C8');  // --accent と同じ色
+  } else {
+    meta.setAttribute('content', '#8ea2cc');  // --primary と同じ色
+  }
+}
+
 // --- 検索バーの背景色を、入力有無と画面に応じて切り替え ---
 function updateSearchBarColor() {
   const searchWrap = document.querySelector('.search-wrap');
@@ -6337,6 +6352,9 @@ function openSearchMode(pushHistory = true) {
   header.classList.add('search-mode');
   document.querySelector('.title-bar').classList.add('search-mode');
 
+  // ステータスバー色をピンクに切り替え
+  updateThemeColor('search');
+
   // 検索バー表示
   document.getElementById('searchBar').classList.add('active');
 
@@ -6380,6 +6398,9 @@ function closeSearchMode() {
   // ヘッダーを通常モードに戻す（1段目・2段目両方）
   header.classList.remove('search-mode');
   document.querySelector('.title-bar').classList.remove('search-mode');
+
+  // ステータスバー色をブルーに戻す
+  updateThemeColor('normal');
 
   // 検索バー非表示＆クリア
   document.getElementById('searchBar').classList.remove('active');
