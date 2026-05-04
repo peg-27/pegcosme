@@ -14,7 +14,7 @@
 <!-- ══════════════════════════════════════════
      #INDEX セクション索引
      ──────────────────────────────────────────
-     【CSS＋HTML（上部・機能ごとにセット）】
+    【CSS＋HTML（上部・機能ごとにセット）】
      #BASE .......... リセット・CSS変数・共通スタイル
      #HEADER ........ ヘッダー・タブバー
      #SEARCH ........ 検索バー
@@ -29,21 +29,33 @@
      #TOAST ......... トースト通知（app-wrap外）
 
      【JavaScript（下部・一括）】
-     #DB ............ IndexedDB操作
-     #STATE ......... 画面遷移・状態管理
-     #BRAND_JS ...... ブランド一覧ロジック
-     #PRODUCT_JS .... 商品一覧ロジック
-     #DETAIL_JS ..... 商品詳細ロジック
-     #FORM_JS ....... 商品フォームロジック
-     #INGREDIENT .... 成分整形補助
-     #MEMO_JS ....... メモ機能ロジック
-     #SEARCH_JS ..... 検索処理
-     #SETTINGS_JS ... 設定画面ロジック（カテゴリ管理・フォルダ管理・バックアップ処理）
-     #MODAL_JS ...... モーダル制御
-     #LIGHTBOX_JS ... 画像全画面モーダル制御
-     #TOAST_JS ...... トースト制御
-     #UTIL .......... ユーティリティ関数
-     #INIT .......... 初期化
+     #DB ............... IndexedDB操作
+     #STATE ............ 状態変数・定数・小ヘルパー
+     #SCREEN_JS ........ 画面切替制御（showScreen）
+     #BACK_JS .......... 戻る・履歴管理・終了処理
+     #SWIPE_JS ......... タブ切替・スワイプ・FAB
+     #SORT_FILTER_JS ... ソート・フィルタードロップダウン制御
+     #BRAND_JS ......... ブランド一覧ロジック（データ・読み込み・描画）
+     #BRAND_OPS_JS ..... フォルダ操作（開く・長押し・削除）
+     #BRAND_ADD_JS ..... ブランド追加
+     #PRODUCT_JS ....... 商品一覧ロジック
+     #REORDER_JS ....... 並べ替えモードロジック
+     #DRAGDROP_JS ...... ドラッグ&ドロップ処理（並べ替えモード用）
+     #DETAIL_JS ........ 商品詳細ロジック
+     #FORM_JS .......... 商品フォームロジック
+     #INGREDIENT ....... 成分整形補助
+     #MEMO_JS .......... メモ機能ロジック
+     #SEARCH_JS ........ 検索処理
+     #SETTINGS_JS ...... 設定モーダル制御
+     #BACKUP_JS ........ バックアップ処理
+     #CATEGORY_JS ...... カテゴリ管理
+     #FOLDER_MANAGE_JS . フォルダ管理（並べ替え）
+     #FOLDER_EDIT_JS ... ブランド・タグ管理
+     #MODAL_JS ......... モーダル制御
+     #LIGHTBOX_JS ...... 画像全画面モーダル制御
+     #TOAST_JS ......... トースト制御
+     #UTIL ............. ユーティリティ関数
+     #INIT ............. 初期化
      ══════════════════════════════════════════ -->
 
 
@@ -157,7 +169,7 @@ img { display: block; max-width: 100%; }
   min-height: var(--title-bar-h);
   overflow: hidden;
   display: grid;
-  grid-template-columns: 40px 1fr 40px;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 4px;
   background: var(--primary);
@@ -177,7 +189,17 @@ img { display: block; max-width: 100%; }
 .title-bar-slot {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 4px;
+}
+
+/* --- 左スロット（検索ボタン）は左寄せ --- */
+.title-bar > .title-bar-slot:first-of-type {
+  justify-content: flex-start;
+}
+
+/* --- 右スロット（削除・編集・設定ボタン）は右寄せ --- */
+.title-bar > .title-bar-slot:last-of-type {
+  justify-content: flex-end;
 }
 
 /* --- 中央のPEG COSMEロゴ --- */
@@ -419,21 +441,22 @@ img { display: block; max-width: 100%; }
 
 <!-- ----- #HEADER HTML ----- -->
 
-<!-- タイトルバー：1段目に検索ボタン・PEG COSMEロゴ・設定ボタンを配置 -->
+<!-- タイトルバー：1段目に検索ボタン・PEG COSMEロゴ・削除/編集ボタン・設定ボタンを配置 -->
 <div class="title-bar" id="titleBar">
-  <!-- 1段目左：検索ボタン or 戻るボタン（検索モード解除用） -->
+  <!-- 1段目左：検索ボタン（検索モード中は非表示。検索モード解除はヘッダー2段目の＜ or スマホ戻るボタン） -->
   <div class="title-bar-slot">
     <button class="header-btn" id="btnSearch" onclick="toggleSearchMode()" title="検索" style="display:none">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     </button>
-    <button class="header-back" id="btnSearchClose" onclick="closeSearchMode()" title="検索を閉じる">
-      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
-    </button>
   </div>
   <!-- 1段目中央：PEG COSMEロゴ（タップでトップ画面へ） -->
   <button class="title-bar-link" onclick="goToTop()">PEG COSME</button>
-  <!-- 1段目右：設定ボタン（縦三点） -->
+  <!-- 1段目右：削除・編集ボタン（詳細画面で表示）と設定ボタン -->
   <div class="title-bar-slot">
+    <!-- 詳細画面用：削除・編集ボタン（2段目から移動） -->
+    <button class="header-text-btn header-text-btn-danger" id="btnDetailDelete" onclick="confirmDeleteProduct()" style="display:none">削除</button>
+    <button class="header-text-btn" id="btnDetailEdit" onclick="editProduct()" style="display:none">編集</button>
+    <!-- 設定ボタン（縦三点） -->
     <button class="header-btn" id="btnSettings" onclick="openSettingsModal()" title="設定">
       <svg viewBox="0 0 24 24">
         <circle cx="12" cy="5" r="2" fill="#fff" stroke="none"/>
@@ -444,29 +467,27 @@ img { display: block; max-width: 100%; }
   </div>
 </div>
 
-<!-- ヘッダー：戻るボタン、タイトル、件数、フィルター、表示切替、ソート、テキストボタン -->
+<!-- ヘッダー：戻るボタン、タイトル、件数、表示切替、フィルター、ソート、テキストボタン -->
 <div class="header">
-  <button class="header-back" id="btnBack" onclick="goBack()">
+  <!-- 戻るボタン：トップ画面以外で表示。スマホの戻るボタンと同じ挙動（history.back経由でpopstateハンドラに委譲） -->
+  <button class="header-back" id="btnBack" onclick="history.back()">
     <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
   </button>
   <div class="header-title" id="headerTitle"></div>
   <!-- 件数バッジ（登録件数／フィルター件数共用） -->
   <span class="header-total-count" id="headerTotalCount"></span>
-  <!-- カテゴリフィルターボタン -->
-  <button class="header-btn" id="btnFilter" onclick="toggleFilterDropdown()" title="カテゴリ" style="display:none">
-    <svg viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
-  </button>
   <!-- 表示切替ボタン（リスト⇔グリッド） -->
   <button class="header-btn" id="btnViewMode" onclick="toggleViewMode()" title="表示切替" style="display:none">
     <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+  </button>
+  <!-- カテゴリフィルターボタン -->
+  <button class="header-btn" id="btnFilter" onclick="toggleFilterDropdown()" title="カテゴリ" style="display:none">
+    <svg viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
   </button>
   <!-- ソートボタン -->
   <button class="header-btn" id="btnSort" onclick="toggleSortDropdown()" title="並び替え" style="display:none">
     <svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
   </button>
-  <!-- 詳細画面用：編集・削除ボタン -->
-  <button class="header-text-btn header-text-btn-danger" id="btnDetailDelete" onclick="confirmDeleteProduct()" style="display:none">削除</button>
-  <button class="header-text-btn" id="btnDetailEdit" onclick="editProduct()" style="display:none">編集</button>
   <!-- メモフォーム用：保存ボタン -->
   <button class="header-text-btn" id="btnMemoSave" onclick="submitMemo()" style="display:none">保存</button>
   <!-- 商品フォーム用：保存ボタン -->
@@ -504,7 +525,7 @@ img { display: block; max-width: 100%; }
   <!-- メモタブ：折り目のある紙アイコン -->
   <button class="tab-btn" data-tab="memo" onclick="switchTab('memo')" title="メモ">
     <svg viewBox="0 0 24 24">
-      <path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9l-5-6z"/>
+      <path d="M14 3H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
       <path d="M14 3v6h5"/>
     </svg>
   </button>
@@ -1032,7 +1053,7 @@ mark.hl {
 /* --- メタ情報タグ（カテゴリ・容量・価格・購入時期） --- */
 .detail-meta {
   display: flex; flex-wrap: wrap; gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 }
 .detail-tag {
   font-size: 12px; font-weight: 500;
@@ -1047,7 +1068,7 @@ mark.hl {
   color: var(--text-light);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
 }
 .detail-section-content {
   font-size: 14px; line-height: 1.7;
@@ -1061,23 +1082,29 @@ mark.hl {
   font-size: 12px; color: var(--primary);
   padding: 4px 10px; border-radius: 5px;
   border: 1px solid var(--primary);
-  margin-top: 6px;
+  margin-top: 8px;
 }
 .detail-copy-btn:active { background: var(--primary-light); }
 
 /* --- 詳細画面のタグチップ表示 --- */
 .detail-tag-chips {
   display: flex; flex-wrap: wrap; gap: 6px;
-  margin-bottom: 16px;
+  margin-top: -10px;
+  margin-bottom: 26px;
 }
 .detail-tag-chip {
   display: inline-flex; align-items: center;
   padding: 4px 12px;
-  background: var(--primary-light);
+  background: transparent;
   color: var(--primary);
+  border: 1px solid var(--primary);
   border-radius: 999px;
   font-size: 13px;
   line-height: 1.4;
+}
+.detail-tag-chip::before {
+  content: "#";
+  margin-right: 2px;
 }
 
 </style>
@@ -2424,11 +2451,8 @@ async function markDataUpdated() {
 
 
 /* ══════════════════════════════════════════
-   #STATE 画面遷移・状態管理
+   #STATE 状態変数・定数・小ヘルパー
    ══════════════════════════════════════════ */
-
-// --- カテゴリ一覧(DBから読み込む) ---
-let allCategories = [];
 
 // --- タグ一覧(DBから読み込む) ---
 let allTags = [];
@@ -2518,6 +2542,11 @@ function restoreScrollPosition(target) {
   requestAnimationFrame(tryRestore);
 }
 
+
+/* ══════════════════════════════════════════
+   #SCREEN_JS 画面切替制御
+   ══════════════════════════════════════════ */
+
 // --- 画面切替のメイン関数 ---
 function showScreen(name, pushHistory = true) {
   // 画面を離れる前に、一覧画面のスクロール位置を保存（フォルダ間スワイプ時はスキップ）
@@ -2545,7 +2574,7 @@ function showScreen(name, pushHistory = true) {
     document.body.classList.remove('no-title-bar');
   }
 
-  // 画面遷移時：検索モードのヘッダー状態をリセット(1段目・2段目両方の背景色・検索バー・モード用ボタン)
+  // 画面遷移時：検索モードのヘッダー状態をリセット(1段目・2段目両方の背景色・検索バー)
   // ※ searchInput.value は一覧画面に「前進」する時のみクリア(戻る時は保持して検索モードを復元する)
   const headerEl = document.querySelector('.header');
   const titleBarEl = document.querySelector('.title-bar');
@@ -2553,7 +2582,6 @@ function showScreen(name, pushHistory = true) {
     headerEl.classList.remove('search-mode');
     titleBarEl.classList.remove('search-mode');
     document.getElementById('searchBar').classList.remove('active');
-    document.getElementById('btnSearchClose').style.display = 'none';
     document.getElementById('searchTotalCount').style.display = 'none';
     // ステータスバー色もブルーに戻す
     updateThemeColor('normal');
@@ -2574,7 +2602,6 @@ function showScreen(name, pushHistory = true) {
   // UI要素の参照
   const backBtn = document.getElementById('btnBack');
   const searchBtn = document.getElementById('btnSearch');
-  const searchCloseBtn = document.getElementById('btnSearchClose');
   const tabBar = document.getElementById('tabBar');
   const searchBar = document.getElementById('searchBar');
   const fab = document.getElementById('fab');
@@ -2596,7 +2623,6 @@ function showScreen(name, pushHistory = true) {
   // デフォルト表示状態(一覧画面向け)
   backBtn.style.display = 'none';
   searchBtn.style.display = 'none';
-  searchCloseBtn.style.display = 'none';
   tabBar.style.display = 'flex';
   fab.style.display = 'flex';
   settingsBtn.style.display = 'flex';
@@ -2647,7 +2673,8 @@ function showScreen(name, pushHistory = true) {
       break;
     case 'products':
       document.getElementById('screenProducts').classList.add('active');
-      // backBtnは非表示、searchBtnを表示(ヘッダー左端を全画面で統一)
+      // ヘッダー2段目に＜ボタンを表示（前画面に戻る）
+      backBtn.style.display = 'flex';
       searchBtn.style.display = 'flex';
       // タブバーを非表示（フォルダ画面ではフォルダ間スワイプを優先）
       tabBar.style.display = 'none';
@@ -2663,6 +2690,8 @@ function showScreen(name, pushHistory = true) {
     case 'tagProducts':
       // タグフォルダ画面はブランドフォルダ画面のHTMLを流用
       document.getElementById('screenProducts').classList.add('active');
+      // ヘッダー2段目に＜ボタンを表示（前画面に戻る）
+      backBtn.style.display = 'flex';
       searchBtn.style.display = 'flex';
       // タブバーを非表示（フォルダ画面ではフォルダ間スワイプを優先）
       tabBar.style.display = 'none';
@@ -2676,7 +2705,8 @@ function showScreen(name, pushHistory = true) {
       break;
     case 'detail':
       document.getElementById('screenDetail').classList.add('active');
-      // backBtnは非表示、searchBtnを表示(成分検索などができるように)
+      // ヘッダー2段目に＜ボタンを表示（前画面に戻る）
+      backBtn.style.display = 'flex';
       searchBtn.style.display = 'flex';
       tabBar.style.display = 'none';
       fab.style.display = 'none';
@@ -2721,7 +2751,8 @@ function showScreen(name, pushHistory = true) {
       break;
     case 'memoDetail':
       document.getElementById('screenMemoDetail').classList.add('active');
-      // backBtnは非表示、searchBtnを表示(メモ内検索ができるように)
+      // ヘッダー2段目に＜ボタンを表示（前画面に戻る）
+      backBtn.style.display = 'flex';
       searchBtn.style.display = 'flex';
       tabBar.style.display = 'none';
       fab.style.display = 'none';
@@ -2785,6 +2816,11 @@ function showScreen(name, pushHistory = true) {
     openSearchMode(false);
   }
 }
+
+
+/* ══════════════════════════════════════════
+   #BACK_JS 戻る・履歴管理・終了処理
+   ══════════════════════════════════════════ */
 
 // --- タイトルバーのPEG COSMEロゴ：タップでトップ画面(ブランド一覧)へ ---
 function goToTop() {
@@ -2902,15 +2938,29 @@ window.addEventListener('popstate', (e) => {
     return;
   }
 
-  // 一覧画面かどうか(brand/products/memo)
+  // 一覧画面かどうか(brand/products/tagProducts/memo)
   const isListScreen = currentScreen === 'brand' || currentScreen === 'products' || currentScreen === 'tagProducts' || currentScreen === 'memo';
+  // 詳細画面かどうか
+  const isDetailScreen = currentScreen === 'detail' || currentScreen === 'memoDetail';
   const headerEl = document.querySelector('.header');
 
-  // 一覧画面で検索モード中 → 検索モードのみ解除
-  if (isListScreen && headerEl.classList.contains('search-mode')) {
-    closeSearchMode();
-    history.pushState({ screen: currentScreen }, '');
-    return;
+  // 検索モード中の分岐：検索を開始した場所によって挙動を変える
+  // - 一覧画面で検索モード中 → 検索モードのみ解除（同じ画面に留まる）
+  // - 詳細画面で「その詳細画面で検索開始した」場合 → 検索モードのみ解除（同じ画面に留まる）
+  // - 詳細画面で「一覧画面で検索開始した」場合 → 通常の戻る処理に流れる
+  //   （結果として一覧画面に戻り、#SCREEN_JS側で検索モードが復元される）
+  if (headerEl.classList.contains('search-mode')) {
+    if (isListScreen) {
+      closeSearchMode();
+      history.pushState({ screen: currentScreen }, '');
+      return;
+    }
+    if (isDetailScreen && searchOpenedAtDetail) {
+      closeSearchMode();
+      history.pushState({ screen: currentScreen }, '');
+      return;
+    }
+    // 詳細画面で一覧から来た検索モードの場合は、ここで止めずに通常の戻る処理へ流れる
   }
 
   // 一覧画面でフィルター適用中 → フィルターのみ解除
@@ -2956,6 +3006,11 @@ function showExitDialog() {
     ]
   });
 }
+
+
+/* ══════════════════════════════════════════
+   #SWIPE_JS タブ切替・スワイプ・FAB
+   ══════════════════════════════════════════ */
 
 // --- タブ切替(カード ↔ メモ) ---
 function switchTab(tab) {
@@ -3076,6 +3131,9 @@ function navigateFolder(direction) {
   // フォルダ間スワイプフラグを立ててスクロール処理を制御
   isFolderSwipe = true;
 
+  // フォルダが切り替わるので、移動先フォルダの sortKey を読み込み直すように指示
+  shouldResetSortForBrand = true;
+
   if (target.type === 'tag') {
     currentTagId = target.id;
     currentBrandId = null;
@@ -3091,7 +3149,7 @@ function navigateFolder(direction) {
 
 
 // ══════════════════════════════════════════
-// ソート・フィルター ドロップダウン制御
+// #SORT_FILTER_JS ソート・フィルタードロップダウン制御
 // ══════════════════════════════════════════
 
 // --- 全ドロップダウンを閉じる ---
@@ -3261,16 +3319,28 @@ async function applySort(sortKey) {
       await dbPut('meta', { key: 'topSort', value: sortKey });
       renderBrands();
     } else if (currentScreen === 'products') {
-      // ブランドフォルダ内：カード並びソート
+      // ブランドフォルダ内：そのブランドオブジェクトに sortKey を保存
       currentProductSort = sortKey;
-      // 次回起動時に復元できるようDBに保存
-      await dbPut('meta', { key: 'productSort', value: sortKey });
+      const brand = await dbGet('brands', currentBrandId);
+      if (brand) {
+        brand.sortKey = sortKey;
+        await dbPut('brands', brand);
+        // メモリ上のキャッシュも更新（再読み込みなしで反映するため）
+        const cached = allBrands.find(b => b.id === currentBrandId);
+        if (cached) cached.sortKey = sortKey;
+      }
       renderProducts();
     } else if (currentScreen === 'tagProducts') {
-      // タグフォルダ内：カード並びソート
+      // タグフォルダ内：そのタグオブジェクトに sortKey を保存
       currentProductSort = sortKey;
-      // 次回起動時に復元できるようDBに保存
-      await dbPut('meta', { key: 'productSort', value: sortKey });
+      const tag = await dbGet('tags', currentTagId);
+      if (tag) {
+        tag.sortKey = sortKey;
+        await dbPut('tags', tag);
+        // メモリ上のキャッシュも更新
+        const cached = allTags.find(t => t.id === currentTagId);
+        if (cached) cached.sortKey = sortKey;
+      }
       renderTagProducts();
     }
   }
@@ -3361,7 +3431,7 @@ function sortProducts(products, sortKey, brandSortOrder) {
 
 
 /* ══════════════════════════════════════════
-   #BRAND_JS ブランド一覧ロジック
+   #BRAND_JS ブランド一覧ロジック（データ・読み込み・描画）
    ══════════════════════════════════════════ */
 
 // --- データ格納用の配列（全件読み込み後に使用） ---
@@ -3708,6 +3778,11 @@ async function renderBrands() {
   list.innerHTML = folderHTML + unassignedHTML;
 }
 
+
+/* ══════════════════════════════════════════
+   #BRAND_OPS_JS フォルダ操作（開く・長押し・削除）
+   ══════════════════════════════════════════ */
+
 // --- トップ画面のDOMからフォルダ一覧を組み立てる（スワイプ移動用） ---
 function buildFolderNavList(currentType, currentId) {
   const folderEls = document.querySelectorAll('#brandList .brand-card');
@@ -3780,6 +3855,11 @@ async function deleteBrand(brandId) {
   toast('ブランドを削除しました');
   renderBrands();
 }
+
+
+/* ══════════════════════════════════════════
+   #BRAND_ADD_JS ブランド追加
+   ══════════════════════════════════════════ */
 
 // --- FABメニューを表示（新規カード or 新規ブランド） ---
 function showFabMenu() {
@@ -3918,12 +3998,18 @@ async function renderProducts() {
   }
 
   // ブランド切替直後の currentProductSort 調整
+  // （フォルダごとに保存された sortKey を読み込む）
   if (shouldResetSortForBrand) {
     shouldResetSortForBrand = false;
     const brand = allBrands.find(b => b.id === currentBrandId);
-    if (brand?.sortOrder && brand.sortOrder.length > 0) {
+    if (brand?.sortKey) {
+      // 保存済みの sortKey があればそれを使う
+      currentProductSort = brand.sortKey;
+    } else if (brand?.sortOrder && brand.sortOrder.length > 0) {
+      // sortKey 未設定だが並べ替え順があるなら custom
       currentProductSort = 'custom';
-    } else if (currentProductSort === 'custom') {
+    } else {
+      // それ以外はデフォルト
       currentProductSort = 'createdAt_desc';
     }
   }
@@ -4029,12 +4115,18 @@ async function renderTagProducts() {
   }
 
   // タグ切替直後の currentProductSort 調整（ブランド画面と同じフラグを流用）
+  // （フォルダごとに保存された sortKey を読み込む）
   if (shouldResetSortForBrand) {
     shouldResetSortForBrand = false;
     const tag = allTags.find(t => t.id === currentTagId);
-    if (tag?.cardOrder && tag.cardOrder.length > 0) {
+    if (tag?.sortKey) {
+      // 保存済みの sortKey があればそれを使う
+      currentProductSort = tag.sortKey;
+    } else if (tag?.cardOrder && tag.cardOrder.length > 0) {
+      // sortKey 未設定だが並べ替え順があるなら custom
       currentProductSort = 'custom';
-    } else if (currentProductSort === 'custom') {
+    } else {
+      // それ以外はデフォルト
       currentProductSort = 'createdAt_desc';
     }
   }
@@ -4262,8 +4354,9 @@ async function moveToBrand(productId, brandId) {
   }
 }
 
+
 // ══════════════════════════════════════════
-// 並べ替えモード
+// #REORDER_JS 並べ替えモード
 // ══════════════════════════════════════════
 
 // --- 並べ替えモードに入る ---
@@ -4395,6 +4488,11 @@ function renderSortModeList() {
   }
   empty.style.display = 'none';
 
+  // 並べ替えモード中は強制的にリスト表示にする（グリッド時のはみ出し対策）
+  // currentViewMode 変数は触らない。解除時の renderProducts/renderTagProducts 側で
+  // applyViewMode() が呼ばれて自動的に元のモードに戻る。
+  list.classList.remove('grid-view');
+
   // トップ画面（フォルダ並べ替え）
   if (currentScreen === 'brand') {
     const brandMap = new Map(allBrands.map(b => [b.id, b]));
@@ -4474,6 +4572,8 @@ function updateHeaderForSortMode() {
   const settingsBtn = document.getElementById('btnSettings');
   const sortBtn = document.getElementById('btnSort');
   const filterBtn = document.getElementById('btnFilter');
+  const searchBtn = document.getElementById('btnSearch');
+  const viewModeBtn = document.getElementById('btnViewMode');
   const title = document.getElementById('headerTitle');
   const confirmBtn = document.getElementById('btnSortConfirm');
   const cancelBtn = document.getElementById('btnSortCancel');
@@ -4486,6 +4586,8 @@ function updateHeaderForSortMode() {
     settingsBtn.style.display = 'none';
     sortBtn.style.display = 'none';
     filterBtn.style.display = 'none';
+    searchBtn.style.display = 'none';
+    viewModeBtn.style.display = 'none';
     confirmBtn.style.display = 'inline-block';
     cancelBtn.style.display = 'inline-block';
     title.textContent = '並べ替え';
@@ -4498,6 +4600,16 @@ function updateHeaderForSortMode() {
     settingsBtn.style.display = '';
     sortBtn.style.display = '';
     filterBtn.style.display = '';
+    // 検索ボタンは全画面で表示するので空文字でクリア
+    searchBtn.style.display = '';
+    // 表示切替ボタンは画面別に分岐
+    // ・products / tagProducts：表示
+    // ・brand（トップ画面）：非表示
+    if (currentScreen === 'products' || currentScreen === 'tagProducts') {
+      viewModeBtn.style.display = '';
+    } else {
+      viewModeBtn.style.display = 'none';
+    }
     // 並べ替え専用ボタンは HTML側でインラインに display:none が書かれている。
     // 空文字でクリアするとCSSルールに該当指定がなく表示されてしまうため、
     // 明示的に 'none' を指定して非表示に戻す。
@@ -4591,7 +4703,7 @@ function cancelSortMode() {
 }
 
 // ══════════════════════════════════════════
-// ドラッグ&ドロップ（並べ替えモード用）
+// #DRAGDROP_JS ドラッグ&ドロップ（並べ替えモード用）
 // ══════════════════════════════════════════
 
 // --- ドラッグ用の状態 ---
@@ -4933,13 +5045,6 @@ async function renderDetail() {
     }
   }
 
-  html += `<div style="margin-bottom:16px;">
-    <button class="detail-copy-btn" onclick="copyAllInfo()">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-      全情報をコピー
-    </button>
-  </div>`;
-
   if (p.ingredients) {
     html += `<div class="detail-section">
       <div class="detail-section-label">全成分</div>
@@ -4953,6 +5058,14 @@ async function renderDetail() {
       <div class="detail-section-content memo-content">${escHL(p.memo, rawQuery)}</div>
     </div>`;
   }
+
+  // --- 全情報をコピー ボタン（最下部に配置） ---
+  html += `<div style="margin-bottom:16px;">
+    <button class="detail-copy-btn" onclick="copyAllInfo()">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+      全情報をコピー
+    </button>
+  </div>`;
 
   document.getElementById('detailBody').innerHTML = html;
 }
@@ -6374,13 +6487,18 @@ function openSearchMode(pushHistory = true) {
   // 検索バー表示
   document.getElementById('searchBar').classList.add('active');
 
-  // 通常モード要素を非表示
+  // 通常モード要素を非表示（検索モード中は1段目左の検索ボタンを隠す）
   document.getElementById('btnSearch').style.display = 'none';
   document.getElementById('headerTotalCount').style.display = 'none';
 
   // 検索モード要素を表示
-  document.getElementById('btnSearchClose').style.display = 'flex';
   document.getElementById('searchTotalCount').style.display = 'block';
+
+  // トップ画面（brand/memo）でも検索モード中はヘッダー2段目の＜を表示する
+  // （通常時は戻る先がないので非表示だが、検索モード解除のルートとして必要）
+  if (currentScreen === 'brand' || currentScreen === 'memo') {
+    document.getElementById('btnBack').style.display = 'flex';
+  }
 
   if (pushHistory) {
     // 検索開始画面の記録：クエリが空（新規検索）の場合のみ更新する
@@ -6424,13 +6542,14 @@ function closeSearchMode() {
   document.getElementById('searchClear').classList.remove('show');
 
   // 検索モード要素を非表示
-  document.getElementById('btnSearchClose').style.display = 'none';
   document.getElementById('searchTotalCount').style.display = 'none';
 
   // 通常モード要素を画面に応じて再表示
   if (currentScreen === 'brand' || currentScreen === 'memo') {
     document.getElementById('btnSearch').style.display = 'flex';
     document.getElementById('headerTotalCount').style.display = 'block';
+    // トップ画面では2段目の＜を非表示に戻す
+    document.getElementById('btnBack').style.display = 'none';
   } else if (currentScreen === 'products' || currentScreen === 'tagProducts') {
     // 商品一覧画面では中央の件数バッジは使わない（タイトルに件数を含めるため）
     document.getElementById('btnSearch').style.display = 'flex';
@@ -6491,10 +6610,63 @@ function clearSearch() {
 
 
 /* ══════════════════════════════════════════
-   #SETTINGS_JS 設定画面(バックアップ＋カテゴリ管理)
+   #SETTINGS_JS 設定モーダル制御
    ══════════════════════════════════════════ */
 
-// ===== バックアップ処理 =====
+// --- 設定モーダルを開く ---
+async function openSettingsModal() {
+  // バックアップ情報を更新
+  await checkBackupReminder();
+
+  // 「アイテムカードを並べ替える」項目の有効・無効
+  // - ブランド／タグフォルダ画面 → 有効
+  // - それ以外（トップ画面・詳細画面・メモ画面など）→ グレーアウト
+  const sortMenuItem = document.getElementById('settingsMenuSort');
+  if (currentScreen === 'products' || currentScreen === 'tagProducts') {
+    sortMenuItem.classList.remove('disabled');
+  } else {
+    sortMenuItem.classList.add('disabled');
+  }
+
+  document.getElementById('settingsModal').classList.add('show');
+}
+
+// --- 設定モーダルを閉じる ---
+function closeSettingsModal() {
+  document.getElementById('settingsModal').classList.remove('show');
+}
+
+// --- 背景タップで閉じる(本体クリックは伝播停止済み) ---
+function closeSettingsModalOnBackdrop(e) {
+  if (e.target === e.currentTarget) {
+    closeSettingsModal();
+  }
+}
+
+// --- 並べ替えメニュー項目クリック ---
+function onSortMenuClick() {
+  const btn = document.getElementById('settingsMenuSort');
+  if (btn.classList.contains('disabled')) return;
+  closeSettingsModal();
+  enterSortMode();
+}
+
+// --- カテゴリ管理画面へ遷移 ---
+function openCategoryManage() {
+  closeSettingsModal();
+  showScreen('categoryManage');
+}
+
+// --- フォルダ管理画面へ遷移 ---
+function openFolderManage() {
+  closeSettingsModal();
+  showScreen('folderManage');
+}
+
+
+/* ══════════════════════════════════════════
+   #BACKUP_JS バックアップ処理
+   ══════════════════════════════════════════ */
 
 // --- バックアップ警告の表示判定 ---
 async function checkBackupReminder() {
@@ -6710,7 +6882,10 @@ async function doImport(file) {
   }
 }
 
-// ===== カテゴリ管理 =====
+
+/* ══════════════════════════════════════════
+   #CATEGORY_JS カテゴリ管理
+   ══════════════════════════════════════════ */
 
 // --- カテゴリ一覧の読み込み ---
 async function loadCategories() {
@@ -6934,59 +7109,10 @@ async function moveCategoryDown(catId) {
   renderCategoryList();
 }
 
-// ===== 設定モーダル制御 =====
 
-// --- 設定モーダルを開く ---
-async function openSettingsModal() {
-  // バックアップ情報を更新
-  await checkBackupReminder();
-
-  // 「アイテムカードを並べ替える」項目の有効・無効
-  // - ブランド／タグフォルダ画面 → 有効
-  // - それ以外（トップ画面・詳細画面・メモ画面など）→ グレーアウト
-  const sortMenuItem = document.getElementById('settingsMenuSort');
-  if (currentScreen === 'products' || currentScreen === 'tagProducts') {
-    sortMenuItem.classList.remove('disabled');
-  } else {
-    sortMenuItem.classList.add('disabled');
-  }
-
-  document.getElementById('settingsModal').classList.add('show');
-}
-
-// --- 設定モーダルを閉じる ---
-function closeSettingsModal() {
-  document.getElementById('settingsModal').classList.remove('show');
-}
-
-// --- 背景タップで閉じる(本体クリックは伝播停止済み) ---
-function closeSettingsModalOnBackdrop(e) {
-  if (e.target === e.currentTarget) {
-    closeSettingsModal();
-  }
-}
-
-// --- 並べ替えメニュー項目クリック ---
-function onSortMenuClick() {
-  const btn = document.getElementById('settingsMenuSort');
-  if (btn.classList.contains('disabled')) return;
-  closeSettingsModal();
-  enterSortMode();
-}
-
-// --- カテゴリ管理画面へ遷移 ---
-function openCategoryManage() {
-  closeSettingsModal();
-  showScreen('categoryManage');
-}
-
-// --- フォルダ管理画面へ遷移 ---
-function openFolderManage() {
-  closeSettingsModal();
-  showScreen('folderManage');
-}
-
-// ===== フォルダ管理 =====
+/* ══════════════════════════════════════════
+   #FOLDER_MANAGE_JS フォルダ管理（並べ替え）
+   ══════════════════════════════════════════ */
 
 // --- フォルダ管理画面の状態管理 ---
 let folderManageWorkingOrder = [];  // 並べ替え操作中の順序（"type:id" の配列）
@@ -7337,6 +7463,11 @@ async function leaveFolderManageScreen() {
   folderManageWorkingOrder = [];
   folderManageDirty = false;
 }
+
+
+/* ══════════════════════════════════════════
+   #FOLDER_EDIT_JS ブランド・タグ管理
+   ══════════════════════════════════════════ */
 
 // ===== ブランド管理 =====
 
@@ -7775,11 +7906,6 @@ async function onAppHiding() {
   const savedSort = await dbGet('meta', 'topSort');
   if (savedSort?.value) {
     currentSort = savedSort.value;
-  }
-  // 前回保存したフォルダ内のカードソート状態を復元
-  const savedProductSort = await dbGet('meta', 'productSort');
-  if (savedProductSort?.value) {
-    currentProductSort = savedProductSort.value;
   }
 
   // --- キーボード表示時のビューポート調整 ---
