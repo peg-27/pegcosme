@@ -10,6 +10,8 @@
 <meta name="apple-mobile-web-app-title" content="PEG COSME">
 <link rel="manifest" href="manifest.json">
 
+<!-- ZIPの読み書きが出来るようになる -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <!-- ══════════════════════════════════════════
      #INDEX セクション索引
@@ -6668,6 +6670,9 @@ function openFolderManage() {
    #BACKUP_JS バックアップ処理
    ══════════════════════════════════════════ */
 
+// --- 分割エクスポートの1ファイルあたり商品件数 ---
+const PRODUCTS_PER_CHUNK = 100;
+
 // --- バックアップ警告の表示判定 ---
 async function checkBackupReminder() {
   const metaUpdated = await dbGet('meta', 'lastUpdated');
@@ -6714,56 +6719,96 @@ function base64ToBlob(base64) {
   return new Blob([array], { type: mime });
 }
 
-// --- エクスポート(JSONファイルとしてダウンロード、画像はBase64に変換して含める) ---
+// --- エクスポート(分割JSONをZIPに格納してダウンロード) ---
 async function exportData() {
   await loadAllData();
   await loadCategories();
 
-  // 画像BlobをBase64に変換した商品データを作成
-  const productsForExport = await Promise.all(allProducts.map(async (p) => {
-    const exported = { ...p };
-    if (p.images?.length > 0) {
-      exported.images = await Promise.all(p.images.map(img => blobToBase64(img)));
-      exported.image = exported.images[0] || null;
-    }
-    return exported;
-  }));
+  if (typeof JSZip === 'undefined') {
+    toast('ZIPライブラリの読み込みに失敗しています');
+    return;
+  }
 
-  // フォルダ並び順も含める
+  const totalProducts = allProducts.length;
+  const totalParts = Math.max(1, Math.ceil(totalProducts / PRODUCTS_PER_CHUNK));
+
+  const exportedAt = new Date().toISOString();
+  const backupId = `${exportedAt}_${Math.random().toString(36).slice(2, 10)}`;
+  const dateStr = exportedAt.slice(0, 10).replace(/-/g, '');
+
+  // フォルダ並び順
   const folderOrderMeta = await dbGet('meta', 'folderOrder');
   const folderOrderForExport = Array.isArray(folderOrderMeta?.value) ? folderOrderMeta.value : [];
 
-  const data = {
-    version: 4,
-    exportedAt: new Date().toISOString(),
-    brands: allBrands,
-    products: productsForExport,
-    memos: allMemos,
-    categories: allCategories,
-    tags: allTags,
-    folderOrder: folderOrderForExport
-  };
+  const zip = new JSZip();
 
-  const json = JSON.stringify(data, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
+  for (let i = 0; i < totalParts; i++) {
+    const start = i * PRODUCTS_PER_CHUNK;
+    const end = start + PRODUCTS_PER_CHUNK;
+    const productsSlice = allProducts.slice(start, end);
+
+    // このチャンク分の画像のみBase64に変換(メモリ効率のため逐次処理)
+    const productsChunk = await Promise.all(productsSlice.map(async (p) => {
+      const exported = { ...p };
+      if (p.images?.length > 0) {
+        exported.images = await Promise.all(p.images.map(img => blobToBase64(img)));
+        exported.image = exported.images[0] || null;
+      }
+      return exported;
+    }));
+
+    const data = {
+      version: 4,
+      backupId,
+      part: i + 1,
+      totalParts,
+      exportedAt,
+      products: productsChunk
+    };
+
+    if (i === 0) {
+      data.brands = allBrands;
+      data.memos = allMemos;
+      data.categories = allCategories;
+      data.tags = allTags;
+      data.folderOrder = folderOrderForExport;
+    }
+
+    const json = JSON.stringify(data, null, 2);
+    const partLabel = totalParts > 1 ? `_${i + 1}of${totalParts}` : '';
+    const fileName = `pegcosme_backup_${dateStr}${partLabel}.json`;
+    zip.file(fileName, json);
+  }
+
+  // ZIP生成(DEFLATE圧縮)
+  const zipBlob = await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 }
+  });
+
+  const url = URL.createObjectURL(zipBlob);
   const a = document.createElement('a');
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   a.href = url;
-  a.download = `pegcosme_backup_${dateStr}.json`;
+  a.download = `pegcosme_backup_${dateStr}.zip`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 
-  await dbPut('meta', { key: 'lastBackup', value: new Date().toISOString() });
-  toast('バックアップを保存しました');
+  await dbPut('meta', { key: 'lastBackup', value: exportedAt });
+  toast(totalParts > 1
+    ? `バックアップを保存しました（${totalParts}個のJSONをZIPに格納）`
+    : 'バックアップを保存しました');
   checkBackupReminder();
 }
 
-// --- インポートボタン → ファイル選択ダイアログを開く ---
+// --- インポートボタン → ファイル選択ダイアログを開く(ZIP/JSON両対応) ---
 function importData() {
-  document.getElementById('importInput').click();
+  const input = document.getElementById('importInput');
+  input.multiple = false;
+  input.accept = '.json,.zip';
+  input.click();
 }
 
 // --- インポートファイル選択後の確認 ---
@@ -6779,51 +6824,21 @@ function onImportSelected(e) {
   }, 300);
 }
 
-// --- インポート実行(Base64画像をBlobに変換してDBに保存) ---
+// --- インポート実行(ZIP/JSON両対応、逐次処理でメモリ効率化) ---
 async function doImport(file) {
   try {
-    const text = await file.text();
-    const data = JSON.parse(text);
-
-    if (!data.brands || !data.products) {
-      toast('無効なバックアップファイルです');
-      return;
-    }
-
     if (!db) await openDB();
     if (!db) { toast('DB接続に失敗しました'); return; }
 
-    await dbClear('brands');
-    await dbClear('products');
-    await dbClear('memos');
-    await dbClear('categories');
-    await dbClear('tags');
-
-    for (const b of data.brands) await dbPut('brands', b);
-
+    const isZip = file.name.toLowerCase().endsWith('.zip');
     const skincareKW = ['化粧水','乳液','美容液','セラム','クリーム','クレンジング','洗顔','パック','マスク','トナー','エッセンス','ローション','オイル'];
+
+    // インポート中の状態を保持
     const importedCats = [];
-    if (data.categories) {
-      for (const c of data.categories) {
-        if (!c.group) {
-          c.group = skincareKW.some(kw => c.name.includes(kw)) ? 'skincare' : 'makeup';
-        }
-        await dbPut('categories', c);
-        importedCats.push(c);
-      }
-    }
-
-    // タグ読み込み(v4以降のバックアップにのみ含まれる)
     const importedTagIds = new Set();
-    if (Array.isArray(data.tags)) {
-      for (const t of data.tags) {
-        await dbPut('tags', t);
-        importedTagIds.add(t.id);
-      }
-    }
 
-    // 商品読み込み(Base64画像をBlobに変換、旧形式のcategoryも変換)
-    for (const p of data.products) {
+    // 商品1件をDBに書き込むヘルパー(画像Blob変換とフォーマット移行を含む)
+    const importProduct = async (p) => {
       if (p.category !== undefined && p.categoryMakeup === undefined && p.categorySkincare === undefined) {
         const cat = importedCats.find(c => c.name === p.category);
         if (cat && cat.group === 'skincare') {
@@ -6835,38 +6850,151 @@ async function doImport(file) {
         }
         delete p.category;
       }
-
-      // image → images 配列移行
       if (p.images === undefined) {
         p.images = p.image ? [p.image] : [];
       }
       if (!p.image && p.images.length > 0) {
         p.image = p.images[0];
       }
-
-      // Base64文字列をBlobに変換
       p.images = p.images.map(img => base64ToBlob(img)).filter(Boolean);
       p.image = p.images[0] || null;
-
-      // tagIds の復元(v4以降。レガシー商品は空配列。存在しないタグIDは除外)
       if (!Array.isArray(p.tagIds)) {
         p.tagIds = [];
       } else {
         p.tagIds = p.tagIds.filter(id => importedTagIds.has(id));
       }
-
       await dbPut('products', p);
+    };
+
+    // 第1パートの処理(DBクリア＋メタデータ書き込み＋商品書き込み)
+    const importFirstPart = async (ds) => {
+      if (!ds.brands || !ds.products) {
+        throw new Error('無効なバックアップファイルです');
+      }
+
+      await dbClear('brands');
+      await dbClear('products');
+      await dbClear('memos');
+      await dbClear('categories');
+      await dbClear('tags');
+
+      for (const b of ds.brands) await dbPut('brands', b);
+
+      if (ds.categories) {
+        for (const c of ds.categories) {
+          if (!c.group) {
+            c.group = skincareKW.some(kw => c.name.includes(kw)) ? 'skincare' : 'makeup';
+          }
+          await dbPut('categories', c);
+          importedCats.push(c);
+        }
+      }
+
+      if (Array.isArray(ds.tags)) {
+        for (const t of ds.tags) {
+          await dbPut('tags', t);
+          importedTagIds.add(t.id);
+        }
+      }
+
+      if (ds.memos) {
+        for (const m of ds.memos) await dbPut('memos', m);
+      }
+
+      if (Array.isArray(ds.folderOrder)) {
+        await dbPut('meta', { key: 'folderOrder', value: ds.folderOrder });
+      }
+
+      if (Array.isArray(ds.products)) {
+        for (const p of ds.products) {
+          await importProduct(p);
+        }
+      }
+    };
+
+    if (isZip) {
+      // ZIP形式: エントリを1個ずつ逐次処理
+      if (typeof JSZip === 'undefined') {
+        toast('ZIPライブラリの読み込みに失敗しています');
+        return;
+      }
+
+      const zip = await JSZip.loadAsync(file);
+      const jsonEntries = Object.entries(zip.files)
+        .filter(([name, obj]) => !obj.dir && name.toLowerCase().endsWith('.json'));
+
+      if (jsonEntries.length === 0) {
+        toast('ZIP内にJSONファイルが見つかりません');
+        return;
+      }
+
+      // ファイル名のpart番号でソート
+      jsonEntries.sort((a, b) => {
+        const getPartFromName = (name) => {
+          const m = name.match(/_(\d+)of\d+\.json$/i);
+          return m ? parseInt(m[1], 10) : 1;
+        };
+        return getPartFromName(a[0]) - getPartFromName(b[0]);
+      });
+
+      let expectedBackupId = null;
+      let expectedTotalParts = null;
+
+      // 1エントリずつ取り出してその場で処理(逐次)
+      for (let i = 0; i < jsonEntries.length; i++) {
+        const [name, fileObj] = jsonEntries[i];
+        const text = await fileObj.async('text');
+        const ds = JSON.parse(text);
+
+        if (i === 0) {
+          // 第1パート: 整合性チェック＆メタデータ書き込み＆第1パートの商品書き込み
+          expectedBackupId = ds.backupId !== undefined ? ds.backupId : null;
+          expectedTotalParts = ds.totalParts !== undefined ? ds.totalParts : 1;
+
+          if (jsonEntries.length !== expectedTotalParts) {
+            toast(`ファイル数が一致しません（${jsonEntries.length}/${expectedTotalParts}）`);
+            return;
+          }
+
+          if (ds.part !== undefined && ds.part !== 1) {
+            toast('第1パートが見つかりません');
+            return;
+          }
+
+          await importFirstPart(ds);
+        } else {
+          // 第2パート以降: 整合性チェック＆商品書き込み
+          if (ds.backupId !== expectedBackupId) {
+            toast('バックアップ群の不一致が検出されました');
+            return;
+          }
+          if (ds.totalParts !== expectedTotalParts) {
+            toast('分割数が一致しません');
+            return;
+          }
+          if (ds.part !== i + 1) {
+            toast(`パート番号が想定と異なります（期待:${i + 1}, 実際:${ds.part}）`);
+            return;
+          }
+
+          if (Array.isArray(ds.products)) {
+            for (const p of ds.products) {
+              await importProduct(p);
+            }
+          }
+        }
+
+        // 周回終わりでtext/dsは次の周回で上書きされ、GC対象になる
+      }
+
+    } else {
+      // 単一JSONファイル(後方互換、または小規模バックアップ)
+      const text = await file.text();
+      const ds = JSON.parse(text);
+      await importFirstPart(ds);
     }
 
-    if (data.memos) {
-      for (const m of data.memos) await dbPut('memos', m);
-    }
-
-    // フォルダ並び順の復元（v4以降のバックアップにのみ含まれる）
-    if (Array.isArray(data.folderOrder)) {
-      await dbPut('meta', { key: 'folderOrder', value: data.folderOrder });
-    }
-
+    // 共通の終了処理
     await loadCategories();
     await markDataUpdated();
     await dbPut('meta', { key: 'lastBackup', value: new Date().toISOString() });
