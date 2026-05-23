@@ -178,7 +178,7 @@ img { display: block; max-width: 100%; }
   position: fixed;
   top: 0; left: 0; right: 0;
   z-index: 100;
-  padding: 5px 8px 0;
+  padding: 5px 12px 0;
   transition: background 0.2s ease;
 }
 
@@ -736,12 +736,60 @@ mark.hl {
   padding-top: 6px;
 }
 
+/* --- インデックスバー --- */
+.index-bar {
+  position: fixed;
+  left: 0;
+  top: calc(var(--title-bar-h) + var(--header-h));
+  bottom: 0;
+  width: 38px;
+  z-index: 40;
+  background: var(--primary-lighter);
+  display: none;
+  flex-direction: column;
+  padding: 4px 0;
+  box-shadow: 1px 0 3px rgba(0, 0, 0, 0.06);
+}
+.index-bar.show { display: flex; }
+
+.index-bar-btn {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-dark);
+  background: transparent;
+  border: none;
+  padding: 0 2px;
+  margin: 1px 3px;
+  border-radius: 4px;
+  letter-spacing: 0;
+  line-height: 1;
+}
+.index-bar-btn.disabled {
+  color: var(--text-lighter);
+  opacity: 0.35;
+  pointer-events: none;
+}
+.index-bar-btn.active {
+  color: var(--accent);
+}
+
+/* インデックスバー表示時はリストを右にずらす */
+.brand-list.with-index-bar {
+  padding-left: 38px;
+}
+
 </style>
 
 <!-- ----- #BRAND HTML ----- -->
 
 <!-- ブランド一覧画面（初期表示画面） -->
 <div class="screen active" id="screenBrand">
+  <nav class="index-bar" id="indexBar"></nav>
   <div class="brand-list" id="brandList"></div>
   <div class="empty-state" id="brandEmpty">
     <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="12" y2="15"/></svg>
@@ -3473,9 +3521,14 @@ async function renderBrands() {
   const rawQuery = document.getElementById('searchInput').value.trim();
   const list = document.getElementById('brandList');
   const empty = document.getElementById('brandEmpty');
+  const indexBar = document.getElementById('indexBar');  // ★追加
 
   // === カテゴリフィルター中 or 検索中：商品カードを直接表示 ===
   if (currentCategoryFilter || query) {
+    // ★追加：インデックスバーを非表示
+    indexBar.classList.remove('show');
+    list.classList.remove('with-index-bar');
+
     let products = allProducts.slice();
 
     // カテゴリフィルター
@@ -3577,7 +3630,6 @@ async function renderBrands() {
   let unassigned = allProducts.filter(p => !p.brandId);
 
   // --- ブランド＋タグを混ぜたフォルダリストを構築 ---
-  // 各要素：{ type:'brand'|'tag', id, name, count, refValue }
   let folders = [];
   brands.forEach(b => {
     folders.push({
@@ -3598,7 +3650,6 @@ async function renderBrands() {
 
   // --- フォルダのソート ---
   if (currentSort === 'custom') {
-    // 並べ替え順：folderOrder の順番で並べ、含まれないものは末尾（新規追加分など）
     const orderMap = new Map(
       folderOrder.map((f, i) => [`${f.type}:${f.id}`, i])
     );
@@ -3607,7 +3658,6 @@ async function renderBrands() {
       const kb = `${b.type}:${b.id}`;
       const ai = orderMap.has(ka) ? orderMap.get(ka) : Infinity;
       const bi = orderMap.has(kb) ? orderMap.get(kb) : Infinity;
-      // 両方とも未登録なら名前順
       if (ai === Infinity && bi === Infinity) {
         return a.name.localeCompare(b.name, 'ja');
       }
@@ -3616,7 +3666,6 @@ async function renderBrands() {
   } else if (currentSort === 'name_asc') {
     folders.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
   } else {
-    // 価格・日付などは、フォルダ内の商品から代表値を計算
     const [field, order] = currentSort.split('_');
     const dir = order === 'asc' ? 1 : -1;
 
@@ -3651,6 +3700,10 @@ async function renderBrands() {
 
   // タグもブランドも未分類も0件
   if (folders.length === 0 && unassigned.length === 0) {
+    // ★追加：インデックスバー非表示
+    indexBar.classList.remove('show');
+    list.classList.remove('with-index-bar');
+
     list.innerHTML = '';
     empty.style.display = 'flex';
     empty.querySelector('p').innerHTML = 'まだ何も登録されていません<br>＋ボタンからカードを追加してください';
@@ -3664,7 +3717,6 @@ async function renderBrands() {
   // フォルダカード1件分のHTMLを生成
   const renderFolderCard = (f) => {
     if (f.type === 'tag') {
-      // タグカード（長押しなし）
       return `<div class="brand-card" data-tag-id="${f.id}"
         onclick="openTag('${f.id}')"
         oncontextmenu="return false">
@@ -3675,7 +3727,6 @@ async function renderBrands() {
         <svg class="brand-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
       </div>`;
     } else {
-      // ブランドカード（長押し対応）
       return `<div class="brand-card" data-id="${f.id}"
         onclick="openBrand('${f.id}')"
         oncontextmenu="return false"
@@ -3691,11 +3742,13 @@ async function renderBrands() {
     }
   };
 
+  // ★追加：インデックスバーで使う「実際に存在するグループ」の集合
+  const availableGroups = new Set();
+
   // フォルダ一覧をHTMLに変換
   let folderHTML;
   if (currentSort === 'name_asc' && folders.length > 0) {
     // === 名前順のときだけグループ見出し付きで描画 ===
-    // タグとブランドを分離
     const tagFolders = folders.filter(f => f.type === 'tag');
     const brandFolders = folders.filter(f => f.type === 'brand');
 
@@ -3704,11 +3757,13 @@ async function renderBrands() {
     // タグフォルダを先頭にまとめる
     if (tagFolders.length > 0) {
       tagFolders.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-      html += `<div class="folder-group-header">＃</div>`;
+      // ★変更：data-group-key="#" を追加
+      html += `<div class="folder-group-header" data-group-key="#">＃</div>`;
+      availableGroups.add('#');  // ★追加
       html += tagFolders.map(renderFolderCard).join('');
     }
 
-    // ブランドフォルダを A〜Z／あ／か… でグルーピング
+    // ブランドフォルダを A~Z／あ／か… でグルーピング
     if (brandFolders.length > 0) {
       const grouped = {};
       brandFolders.forEach(f => {
@@ -3716,7 +3771,6 @@ async function renderBrands() {
         if (!grouped[key]) grouped[key] = [];
         grouped[key].push(f);
       });
-      // 各グループ内をソート（記号→数字→アルファベット→五十音）
       Object.values(grouped).forEach(arr => {
         arr.sort((a, b) => {
           const ka = getBrandSortKey(a.name);
@@ -3724,23 +3778,23 @@ async function renderBrands() {
           return ka < kb ? -1 : ka > kb ? 1 : 0;
         });
       });
-      // グループ順に出力
       const GROUP_ORDER = ['A-Z', 'あ', 'か', 'さ', 'た', 'な', 'は', 'ま', 'や', 'ら', 'わ', 'その他'];
       GROUP_ORDER.forEach(groupKey => {
         const arr = grouped[groupKey];
         if (!arr || arr.length === 0) return;
-        const label = groupKey === 'A-Z' ? 'A〜Z' : groupKey;
-        html += `<div class="folder-group-header">${label}</div>`;
+        availableGroups.add(groupKey);  // ★追加
+        const label = groupKey === 'A-Z' ? 'A~Z' : groupKey;
+        // ★変更：data-group-key="${groupKey}" を追加
+        html += `<div class="folder-group-header" data-group-key="${groupKey}">${label}</div>`;
         html += arr.map(renderFolderCard).join('');
       });
     }
     folderHTML = html;
   } else {
-    // === それ以外のソートはフラットに描画 ===
     folderHTML = folders.map(renderFolderCard).join('');
   }
 
-  // 未分類商品カードを生成（BlobをオブジェクトURLに変換）
+  // 未分類商品カードを生成
   const unassignedCardList = await Promise.all(unassigned.map(async (p) => {
     let thumbHtml;
     if (p.images?.[0]) {
@@ -3770,14 +3824,101 @@ async function renderBrands() {
   // 未分類カードに見出しを付けるか判定
   let unassignedHTML;
   if (currentSort === 'name_asc' && unassigned.length > 0) {
-    // 名前順のときは「未分類」見出しを付ける
     unassignedHTML = `<div class="folder-group-header">未分類</div>` + unassignedCardList.join('');
   } else {
-    // それ以外はそのまま
     unassignedHTML = unassignedCardList.join('');
   }
 
   list.innerHTML = folderHTML + unassignedHTML;
+
+  // ★追加：インデックスバーの表示制御
+  // 検索モード中（ヘッダーがピンク）は非表示にする
+  const isSearchMode = document.querySelector('.header').classList.contains('search-mode');
+  if (currentSort === 'name_asc' && folders.length > 0 && !isSearchMode) {
+    indexBar.classList.add('show');
+    list.classList.add('with-index-bar');
+    renderIndexBar(availableGroups);
+    setupIndexBarScroll();
+    requestAnimationFrame(updateIndexBarHighlight);
+  } else {
+    indexBar.classList.remove('show');
+    list.classList.remove('with-index-bar');
+  }
+}
+
+// ══════════════════════════════════════════
+// インデックスバー（名前順ソート時の左端ジャンプバー）
+// ══════════════════════════════════════════
+
+// インデックスバーのボタン順序（表示順）
+const INDEX_BAR_KEYS = ['#', 'A-Z', 'あ', 'か', 'さ', 'た', 'な', 'は', 'ま', 'や', 'ら', 'わ', 'その他'];
+
+// スクロールリスナー登録用フラグ・throttle用変数
+let indexBarScrollSetup = false;
+let indexBarHighlightRaf = null;
+
+// --- インデックスバーを描画 ---
+function renderIndexBar(availableGroups) {
+  const bar = document.getElementById('indexBar');
+  if (!bar) return;
+  const html = INDEX_BAR_KEYS.map(key => {
+    const enabled = availableGroups.has(key);
+    let label;
+    if (key === 'A-Z') label = 'A~Z';
+    else if (key === 'その他') label = '他';
+    else label = key;
+    return `<button type="button" class="index-bar-btn${enabled ? '' : ' disabled'}" data-group-key="${esc(key)}" onclick="jumpToGroup('${key}')">${label}</button>`;
+  }).join('');
+  bar.innerHTML = html;
+}
+
+// --- 指定グループまでスクロール ---
+function jumpToGroup(key) {
+  const target = document.querySelector(`#brandList .folder-group-header[data-group-key="${CSS.escape(key)}"]`);
+  if (!target) return;
+  const mainArea = document.getElementById('mainArea');
+  const headerRect = target.getBoundingClientRect();
+  const mainRect = mainArea.getBoundingClientRect();
+  const offset = mainArea.scrollTop + headerRect.top - mainRect.top;
+  mainArea.scrollTop = offset;  // ★変更：smoothスクロールから即時ジャンプに
+}
+
+// --- スクロール位置に応じてアクティブボタンを更新 ---
+function updateIndexBarHighlight() {
+  const bar = document.getElementById('indexBar');
+  if (!bar || !bar.classList.contains('show')) return;
+  const mainArea = document.getElementById('mainArea');
+  const mainTop = mainArea.getBoundingClientRect().top;
+  const headers = document.querySelectorAll('#brandList .folder-group-header[data-group-key]');
+  if (headers.length === 0) return;
+  let currentKey = null;
+  headers.forEach(h => {
+    const top = h.getBoundingClientRect().top;
+    if (top - mainTop <= 16) {
+      currentKey = h.dataset.groupKey;
+    }
+  });
+  if (!currentKey) currentKey = headers[0].dataset.groupKey;
+  bar.querySelectorAll('.index-bar-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.groupKey === currentKey);
+  });
+}
+
+// --- スクロールイベントを requestAnimationFrame で間引く ---
+function scheduleIndexBarHighlight() {
+  if (indexBarHighlightRaf) return;
+  indexBarHighlightRaf = requestAnimationFrame(() => {
+    indexBarHighlightRaf = null;
+    updateIndexBarHighlight();
+  });
+}
+
+// --- スクロールリスナーを初回のみ登録 ---
+function setupIndexBarScroll() {
+  if (indexBarScrollSetup) return;
+  indexBarScrollSetup = true;
+  const mainArea = document.getElementById('mainArea');
+  mainArea.addEventListener('scroll', scheduleIndexBarHighlight, { passive: true });
 }
 
 
@@ -5620,7 +5761,7 @@ function renderBrandPickList() {
   GROUP_ORDER.forEach(groupKey => {
     const arr = grouped[groupKey];
     if (!arr || arr.length === 0) return;
-    const label = groupKey === 'A-Z' ? 'A〜Z' : groupKey;
+    const label = groupKey === 'A-Z' ? 'A~Z' : groupKey;
     html += `<div class="brand-pick-header">${label}</div>`;
     arr.forEach(b => {
       const selected = brandPickBuffer === b.id;
@@ -6482,6 +6623,12 @@ function openSearchMode(pushHistory = true) {
   // ヘッダーを検索ナビバーに切り替え（1段目・2段目両方をピンクに）
   header.classList.add('search-mode');
   document.querySelector('.title-bar').classList.add('search-mode');
+
+  // ★追加：インデックスバーを非表示にする（検索モード中はピンクヘッダーに連動）
+  const indexBar = document.getElementById('indexBar');
+  if (indexBar) indexBar.classList.remove('show');
+  const brandList = document.getElementById('brandList');
+  if (brandList) brandList.classList.remove('with-index-bar');
 
   // ステータスバー色をピンクに切り替え
   updateThemeColor('search');
