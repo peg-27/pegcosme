@@ -740,7 +740,7 @@ mark.hl {
 .index-bar {
   position: fixed;
   left: 0;
-  top: calc(var(--title-bar-h) + var(--header-h));
+  top: calc(var(--title-bar-h) + var(--header-h) + var(--tab-h));
   bottom: 0;
   width: 38px;
   z-index: 40;
@@ -3864,7 +3864,7 @@ async function renderBrands() {
 // ══════════════════════════════════════════
 
 // インデックスバーのボタン順序（表示順）
-const INDEX_BAR_KEYS = ['#', 'A-Z', 'あ', 'か', 'さ', 'た', 'な', 'は', 'ま', 'や', 'ら', 'わ', 'その他'];
+const INDEX_BAR_KEYS = ['#', 'あ', 'か', 'さ', 'た', 'な', 'は', 'ま', 'や', 'ら', 'わ', 'その他'];
 
 // スクロールリスナー登録用フラグ・throttle用変数
 let indexBarScrollSetup = false;
@@ -3876,10 +3876,7 @@ function renderIndexBar(availableGroups) {
   if (!bar) return;
   const html = INDEX_BAR_KEYS.map(key => {
     const enabled = availableGroups.has(key);
-    let label;
-    if (key === 'A-Z') label = 'A~Z';
-    else if (key === 'その他') label = '他';
-    else label = key;
+    const label = key === 'その他' ? '他' : key;
     return `<button type="button" class="index-bar-btn${enabled ? '' : ' disabled'}" data-group-key="${esc(key)}" onclick="jumpToGroup('${key}')">${label}</button>`;
   }).join('');
   bar.innerHTML = html;
@@ -6544,17 +6541,44 @@ function splitQuery(rawQuery) {
 }
 
 // --- text内に queries の全単語が含まれるか(AND検索, 大文字小文字無視) ---
+// 各単語の先頭が「-」なら除外ワードとして扱う(その単語が含まれているとマッチしない)
 function matchesAllQueries(text, queries) {
   if (!queries || queries.length === 0) return true;
   const lowerText = String(text || '').toLowerCase();
-  return queries.every(q => lowerText.includes(String(q).toLowerCase()));
+  for (const q of queries) {
+    const qStr = String(q);
+    // 単独の「-」は無視
+    if (qStr === '-') continue;
+    if (qStr.startsWith('-') && qStr.length > 1) {
+      // 除外ワード：含まれていたらマッチしない
+      const excludeWord = qStr.slice(1).toLowerCase();
+      if (lowerText.includes(excludeWord)) return false;
+    } else {
+      // 包含ワード：含まれていなければマッチしない
+      if (!lowerText.includes(qStr.toLowerCase())) return false;
+    }
+  }
+  return true;
 }
 
 // --- 1つの商品データ内のヒット箇所数を計算（全フィールド合計、ブランド名も対象、複数単語対応） ---
+// 先頭が「-」のトークンは除外ワード扱い。除外ワードが含まれていたら0を返す（非表示）。
 function countProductHits(product, query) {
   if (!product) return 0;
   const queries = splitQuery(query);
   if (queries.length === 0) return 0;
+
+  // includes（含むワード）と excludes（除外ワード）に分離
+  const includes = [];
+  const excludes = [];
+  for (const q of queries) {
+    if (q === '-') continue;
+    if (q.startsWith('-') && q.length > 1) {
+      excludes.push(q.slice(1));
+    } else {
+      includes.push(q);
+    }
+  }
 
   const brand = allBrands.find(b => b.id === product.brandId);
   const brandName = brand ? brand.name : '';
@@ -6570,19 +6594,58 @@ function countProductHits(product, query) {
     product.price
   ];
 
-  // 各単語のヒット数をフィールド全体で合計
-  return queries.reduce((total, q) => {
-    return total + fields.reduce((sum, f) => sum + countHits(f, q), 0);
+  // 除外チェック：いずれかのexcludeワードが含まれていたら0を返す（＝非表示）
+  for (const ex of excludes) {
+    for (const f of fields) {
+      if (countHits(f, ex) > 0) return 0;
+    }
+  }
+
+  // 含むワードが無く除外ワードのみの場合：表示はさせたいので1を返す
+  // （例：「-オキシ塩化ビスマス」だけ入力 → 含まない全商品を出す）
+  if (includes.length === 0) {
+    return excludes.length > 0 ? 1 : 0;
+  }
+
+  // 含むワードのヒット数合計を返す
+  return includes.reduce((total, inc) => {
+    return total + fields.reduce((sum, f) => sum + countHits(f, inc), 0);
   }, 0);
 }
 
 // --- 1つのメモデータ内のヒット箇所数を計算（タイトル＋本文、複数単語対応） ---
+// 先頭が「-」のトークンは除外ワード扱い。除外ワードが含まれていたら0を返す（非表示）。
 function countMemoHits(memo, query) {
   if (!memo) return 0;
   const queries = splitQuery(query);
   if (queries.length === 0) return 0;
-  return queries.reduce((total, q) => {
-    return total + countHits(memo.title, q) + countHits(memo.body, q);
+
+  // includes（含むワード）と excludes（除外ワード）に分離
+  const includes = [];
+  const excludes = [];
+  for (const q of queries) {
+    if (q === '-') continue;
+    if (q.startsWith('-') && q.length > 1) {
+      excludes.push(q.slice(1));
+    } else {
+      includes.push(q);
+    }
+  }
+
+  // 除外チェック：タイトルまたは本文に含まれていたら0を返す（＝非表示）
+  for (const ex of excludes) {
+    if (countHits(memo.title, ex) > 0 || countHits(memo.body, ex) > 0) {
+      return 0;
+    }
+  }
+
+  // 含むワードが無く除外ワードのみの場合：表示はさせたいので1を返す
+  if (includes.length === 0) {
+    return excludes.length > 0 ? 1 : 0;
+  }
+
+  return includes.reduce((total, inc) => {
+    return total + countHits(memo.title, inc) + countHits(memo.body, inc);
   }, 0);
 }
 
