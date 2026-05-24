@@ -4034,8 +4034,8 @@ function showAddBrandModal() {
   showModal({
     title: 'ブランドを追加',
     content: `
-      <input class="modal-input" id="modalBrandInput" placeholder="ブランド名を入力" autofocus>
-      <input class="modal-input" id="modalBrandReadingInput" placeholder="読み仮名（任意・例：あーるえむけー）" style="margin-top:8px;">
+      <input class="modal-input" id="modalBrandInput" placeholder="ブランド名を入力" autocomplete="off" autofocus>
+      <input class="modal-input" id="modalBrandReadingInput" placeholder="読み仮名（任意・例：あーるえむけー）" autocomplete="off" style="margin-top:8px;">
     `,
     actions: [
       { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
@@ -4078,7 +4078,7 @@ function addBrandFromMoveModal(productId) {
     title: 'ブランドを追加',
     content: `
       <input class="modal-input" id="modalBrandInput" placeholder="ブランド名を入力" autocomplete="off">
-      <input class="modal-input" id="modalBrandReadingInput" placeholder="読み仮名（任意・例：あーるえむけー）" style="margin-top:8px;">
+      <input class="modal-input" id="modalBrandReadingInput" placeholder="読み仮名（任意・例：あーるえむけー）" autocomplete="off" style="margin-top:8px;">
     `,
     actions: [
       { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
