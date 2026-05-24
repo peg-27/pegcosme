@@ -1489,7 +1489,8 @@ mark.hl {
 .form-input::placeholder,
 .form-textarea::placeholder,
 .form-select.placeholder,
-.form-tag-trigger {
+.form-tag-trigger,
+.modal-input::placeholder {
   color: #bcc5d0;
 }
 
@@ -1507,15 +1508,24 @@ mark.hl {
       <input type="file" id="imageInput" accept="image/*" style="display:none" onchange="onImageSelected(event)">
     </div>
     <!-- ブランド選択 -->
-<div class="form-group">
-  <label class="form-label form-required">ブランド名</label>
-  <button type="button" class="brand-pick-trigger" id="formBrandTrigger" onclick="openBrandPickModal()">
-    <span id="formBrandLabel">ブランドなし（未分類）</span>
-  </button>
-  <select id="formBrand" style="display:none">
-    <option value=""></option>
-  </select>
-</div>
+    <div class="form-group">
+      <label class="form-label form-required">ブランド名</label>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button type="button" class="brand-pick-trigger" id="formBrandTrigger" onclick="openBrandPickModal()" style="flex:1;">
+          <span id="formBrandLabel">ブランドなし（未分類）</span>
+        </button>
+        <select id="formBrand" style="display:none">
+          <option value=""></option>
+        </select>
+        <button type="button" onclick="openAddBrandModalForForm()" style="
+          width:42px; height:42px; flex-shrink:0;
+          border:1px solid var(--border); border-radius:var(--radius-sm);
+          background:var(--card-bg); color:var(--primary);
+          font-size:22px; font-weight:600;
+          display:flex; align-items:center; justify-content:center;
+        ">＋</button>
+      </div>
+    </div>
     <!-- 商品名（必須） -->
     <div class="form-group">
       <label class="form-label form-required">商品名</label>
@@ -3522,11 +3532,10 @@ async function renderBrands() {
   const rawQuery = document.getElementById('searchInput').value.trim();
   const list = document.getElementById('brandList');
   const empty = document.getElementById('brandEmpty');
-  const indexBar = document.getElementById('indexBar');  // ★追加
+  const indexBar = document.getElementById('indexBar');
 
   // === カテゴリフィルター中 or 検索中：商品カードを直接表示 ===
   if (currentCategoryFilter || query) {
-    // ★追加：インデックスバーを非表示
     indexBar.classList.remove('show');
     list.classList.remove('with-index-bar');
 
@@ -3561,7 +3570,6 @@ async function renderBrands() {
       document.getElementById('headerTotalCount').textContent = products.length + '件';
     }
     if (query) {
-      // 検索でヒットした商品の件数を表示
       document.getElementById('searchTotalCount').textContent = products.length + '件';
     }
 
@@ -3637,6 +3645,7 @@ async function renderBrands() {
       type: 'brand',
       id: b.id,
       name: b.name,
+      reading: b.reading || '',  // ★読み仮名対応：reading を含める
       count: allProducts.filter(p => p.brandId === b.id).length
     });
   });
@@ -3665,7 +3674,12 @@ async function renderBrands() {
       return ai - bi;
     });
   } else if (currentSort === 'name_asc') {
-    folders.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    // ★読み仮名対応：ソートキーに reading || name を使用
+    folders.sort((a, b) => {
+      const ka = a.reading || a.name;
+      const kb = b.reading || b.name;
+      return ka.localeCompare(kb, 'ja');
+    });
   } else {
     const [field, order] = currentSort.split('_');
     const dir = order === 'asc' ? 1 : -1;
@@ -3701,7 +3715,6 @@ async function renderBrands() {
 
   // タグもブランドも未分類も0件
   if (folders.length === 0 && unassigned.length === 0) {
-    // ★追加：インデックスバー非表示
     indexBar.classList.remove('show');
     list.classList.remove('with-index-bar');
 
@@ -3743,7 +3756,7 @@ async function renderBrands() {
     }
   };
 
-  // ★追加：インデックスバーで使う「実際に存在するグループ」の集合
+  // インデックスバーで使う「実際に存在するグループ」の集合
   const availableGroups = new Set();
 
   // フォルダ一覧をHTMLに変換
@@ -3758,9 +3771,8 @@ async function renderBrands() {
     // タグフォルダを先頭にまとめる
     if (tagFolders.length > 0) {
       tagFolders.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-      // ★変更：data-group-key="#" を追加
       html += `<div class="folder-group-header" data-group-key="#">＃</div>`;
-      availableGroups.add('#');  // ★追加
+      availableGroups.add('#');
       html += tagFolders.map(renderFolderCard).join('');
     }
 
@@ -3768,14 +3780,14 @@ async function renderBrands() {
     if (brandFolders.length > 0) {
       const grouped = {};
       brandFolders.forEach(f => {
-        const key = getBrandGroupKey(f.name);
+        const key = getBrandGroupKey(f.reading || f.name);  // ★読み仮名対応
         if (!grouped[key]) grouped[key] = [];
         grouped[key].push(f);
       });
       Object.values(grouped).forEach(arr => {
         arr.sort((a, b) => {
-          const ka = getBrandSortKey(a.name);
-          const kb = getBrandSortKey(b.name);
+          const ka = getBrandSortKey(a.reading || a.name);  // ★読み仮名対応
+          const kb = getBrandSortKey(b.reading || b.name);  // ★読み仮名対応
           return ka < kb ? -1 : ka > kb ? 1 : 0;
         });
       });
@@ -3783,9 +3795,8 @@ async function renderBrands() {
       GROUP_ORDER.forEach(groupKey => {
         const arr = grouped[groupKey];
         if (!arr || arr.length === 0) return;
-        availableGroups.add(groupKey);  // ★追加
+        availableGroups.add(groupKey);
         const label = groupKey === 'A-Z' ? 'A~Z' : groupKey;
-        // ★変更：data-group-key="${groupKey}" を追加
         html += `<div class="folder-group-header" data-group-key="${groupKey}">${label}</div>`;
         html += arr.map(renderFolderCard).join('');
       });
@@ -3832,7 +3843,7 @@ async function renderBrands() {
 
   list.innerHTML = folderHTML + unassignedHTML;
 
-  // ★追加：インデックスバーの表示制御
+  // インデックスバーの表示制御
   // 検索モード中（ヘッダーがピンク）は非表示にする
   const isSearchMode = document.querySelector('.header').classList.contains('search-mode');
   if (currentSort === 'name_asc' && folders.length > 0 && !isSearchMode) {
@@ -3846,6 +3857,7 @@ async function renderBrands() {
     list.classList.remove('with-index-bar');
   }
 }
+
 
 // ══════════════════════════════════════════
 // インデックスバー（名前順ソート時の左端ジャンプバー）
@@ -4021,7 +4033,10 @@ function showFabMenu() {
 function showAddBrandModal() {
   showModal({
     title: 'ブランドを追加',
-    content: '<input class="modal-input" id="modalBrandInput" placeholder="ブランド名を入力" autofocus>',
+    content: `
+      <input class="modal-input" id="modalBrandInput" placeholder="ブランド名を入力" autofocus>
+      <input class="modal-input" id="modalBrandReadingInput" placeholder="読み仮名（任意・例：あーるえむけー）" style="margin-top:8px;">
+    `,
     actions: [
       { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
       { text: '追加', cls: 'modal-ok', action: addBrand }
@@ -4036,13 +4051,20 @@ function showAddBrandModal() {
 // --- ブランドをDBに追加 ---
 async function addBrand() {
   const inp = document.getElementById('modalBrandInput');
+  const readingInp = document.getElementById('modalBrandReadingInput');
   const name = inp ? inp.value.trim() : '';
+  const reading = readingInp ? readingInp.value.trim() : '';
   if (!name) { toast('ブランド名を入力してください'); return; }
   if (allBrands.some(b => b.name === name)) {
     toast('同じ名前のブランドが既にあります');
     return;
   }
-  await dbPut('brands', { id: genId(), name, createdAt: new Date().toISOString() });
+  await dbPut('brands', {
+    id: genId(),
+    name,
+    reading,
+    createdAt: new Date().toISOString()
+  });
   await markDataUpdated();
   closeModal();
   toast('ブランドを追加しました');
@@ -4054,19 +4076,24 @@ function addBrandFromMoveModal(productId) {
   closeModal();
   showModal({
     title: 'ブランドを追加',
-    content: '<input class="modal-input" id="modalBrandInput" placeholder="ブランド名を入力" autocomplete="off">',
+    content: `
+      <input class="modal-input" id="modalBrandInput" placeholder="ブランド名を入力" autocomplete="off">
+      <input class="modal-input" id="modalBrandReadingInput" placeholder="読み仮名（任意・例：あーるえむけー）" style="margin-top:8px;">
+    `,
     actions: [
       { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
       {
         text: '追加して移動', cls: 'modal-ok', action: async () => {
           const inp = document.getElementById('modalBrandInput');
+          const readingInp = document.getElementById('modalBrandReadingInput');
           const name = inp ? inp.value.trim() : '';
+          const reading = readingInp ? readingInp.value.trim() : '';
           if (!name) { toast('ブランド名を入力してください'); return; }
           if (allBrands.some(b => b.name === name)) {
             toast('同じ名前のブランドが既にあります');
             return;
           }
-          const newBrand = { id: genId(), name, createdAt: new Date().toISOString() };
+          const newBrand = { id: genId(), name, reading, createdAt: new Date().toISOString() };
           await dbPut('brands', newBrand);
           await markDataUpdated();
           await loadAllData();
@@ -5725,30 +5752,24 @@ function renderBrandPickList() {
   const container = document.getElementById('brandPickList');
   if (!container) return;
 
-  // ブランドをグループに振り分け
+  // ブランドをグループに振り分け（読み仮名優先）
   const grouped = {};
   allBrands.forEach(b => {
-    const key = getBrandGroupKey(b.name);
+    const key = getBrandGroupKey(b.reading || b.name);
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(b);
   });
 
-  // 各グループ内をソート
+  // 各グループ内をソート（読み仮名優先）
   Object.values(grouped).forEach(arr => {
     arr.sort((a, b) => {
-      const ka = getBrandSortKey(a.name);
-      const kb = getBrandSortKey(b.name);
+      const ka = getBrandSortKey(a.reading || a.name);
+      const kb = getBrandSortKey(b.reading || b.name);
       return ka < kb ? -1 : ka > kb ? 1 : 0;
     });
   });
 
   let html = '';
-
-  // ＋新規ブランドを作成
-  html += `<button type="button" class="brand-pick-item brand-pick-action" onclick="onBrandPickNew()">
-    <span class="brand-pick-radio"></span>
-    <span class="brand-pick-name">＋ 新規ブランドを作成</span>
-  </button>`;
 
   // ブランドなし（未分類）
   const noneSelected = brandPickBuffer === '';
@@ -5782,12 +5803,14 @@ function selectBrandPick(brandId) {
   renderBrandPickList();
 }
 
-// --- 「＋ 新規ブランドを作成」をタップ ---
-function onBrandPickNew() {
-  closeModal();
+// --- フォーム上の＋ボタンから新規ブランド作成モーダルを開く ---
+function openAddBrandModalForForm() {
   showModal({
     title: 'ブランドを追加',
-    content: '<input class="modal-input" id="modalBrandInput" placeholder="ブランド名を入力" autocomplete="off">',
+    content: `
+      <input class="modal-input" id="modalBrandInput" placeholder="ブランド名を入力" autocomplete="off">
+      <input class="modal-input" id="modalBrandReadingInput" placeholder="読み仮名（任意・例：あーるえむけー）" style="margin-top:8px;">
+    `,
     actions: [
       { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
       { text: '追加', cls: 'modal-ok', action: addBrandFromForm }
@@ -5813,7 +5836,10 @@ function onFormBrandChange(e) {
   e.target.value = '';
   showModal({
     title: 'ブランドを追加',
-    content: '<input class="modal-input" id="modalBrandInput" placeholder="ブランド名を入力" autocomplete="off">',
+    content: `
+      <input class="modal-input" id="modalBrandInput" placeholder="ブランド名を入力" autocomplete="off">
+      <input class="modal-input" id="modalBrandReadingInput" placeholder="読み仮名（任意・例：あーるえむけー）" style="margin-top:8px;">
+    `,
     actions: [
       { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
       { text: '追加', cls: 'modal-ok', action: addBrandFromForm }
@@ -5828,13 +5854,15 @@ function onFormBrandChange(e) {
 // --- フォーム内からブランドを追加してセレクトを更新 ---
 async function addBrandFromForm() {
   const inp = document.getElementById('modalBrandInput');
+  const readingInp = document.getElementById('modalBrandReadingInput');
   const name = inp ? inp.value.trim() : '';
+  const reading = readingInp ? readingInp.value.trim() : '';
   if (!name) { toast('ブランド名を入力してください'); return; }
   if (allBrands.some(b => b.name === name)) {
     toast('同じ名前のブランドが既にあります');
     return;
   }
-  const newBrand = { id: genId(), name, createdAt: new Date().toISOString() };
+  const newBrand = { id: genId(), name, reading, createdAt: new Date().toISOString() };
   await dbPut('brands', newBrand);
   await markDataUpdated();
   await loadAllData();
@@ -7752,8 +7780,11 @@ function showEditBrandModal(brandId) {
   const brand = allBrands.find(b => b.id === brandId);
   if (!brand) return;
   showModal({
-    title: 'ブランド名を編集',
-    content: `<input type="text" class="modal-input" id="brandEditInput" value="${esc(brand.name)}" maxlength="60">`,
+    title: 'ブランドを編集',
+    content: `
+      <input type="text" class="modal-input" id="brandEditInput" value="${esc(brand.name)}" maxlength="60" placeholder="ブランド名">
+      <input type="text" class="modal-input" id="brandReadingInput" value="${esc(brand.reading || '')}" maxlength="60" placeholder="読み仮名（任意・例：あーるえむけー）" style="margin-top:8px;">
+    `,
     actions: [
       { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
       { text: '保存', cls: 'modal-primary', action: () => updateBrandName(brandId) }
@@ -7768,7 +7799,9 @@ function showEditBrandModal(brandId) {
 // --- ブランド名更新の実行 ---
 async function updateBrandName(brandId) {
   const input = document.getElementById('brandEditInput');
+  const readingInput = document.getElementById('brandReadingInput');
   const newName = input?.value.trim();
+  const newReading = readingInput?.value.trim() || '';
   if (!newName) {
     toast('ブランド名を入力してください');
     return;
@@ -7780,10 +7813,11 @@ async function updateBrandName(brandId) {
     return;
   }
   brand.name = newName;
+  brand.reading = newReading;
   await dbPut('brands', brand);
   await markDataUpdated();
   closeModal();
-  toast('ブランド名を更新しました');
+  toast('ブランドを更新しました');
   refreshManageScreen();
 }
 
