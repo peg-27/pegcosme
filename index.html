@@ -3741,11 +3741,19 @@ function toggleTopMode() {
 }
 
 // --- トップ表示モードボタンのアイコン更新 ---
-// フォルダ⇔アイテムどちらのモードでも「2枚重なったカード」アイコンで固定。
+// 「タップで切り替わる先のモード」を示すアイコンにする。
+//  ・フォルダ表示中   → 押すとカード直接表示へ → 2枚重なったカード
+//  ・カード直接表示中 → 押すとフォルダ表示へ   → フォルダ
 function updateTopModeIcon() {
   const btn = document.getElementById('btnTopMode');
   if (!btn) return;
-  btn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="8" y="3" width="12" height="12" rx="2" fill="none"/><rect x="4" y="9" width="12" height="12" rx="2" fill="var(--primary)"/></svg>`;
+  if (currentTopMode === 'item') {
+    // カード直接表示中 → フォルダアイコン
+    btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>`;
+  } else {
+    // フォルダ表示中 → 2枚重なったカードのアイコン
+    btn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="8" y="3" width="12" height="12" rx="2" fill="none"/><rect x="4" y="9" width="12" height="12" rx="2" fill="var(--primary)"/></svg>`;
+  }
 }
 
 // --- ブランド一覧を描画 ---
