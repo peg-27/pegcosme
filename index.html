@@ -445,9 +445,9 @@ img { display: block; max-width: 100%; }
 
 <!-- タイトルバー：1段目に検索ボタン・PEG COSMEロゴ・削除/編集ボタン・設定ボタンを配置 -->
 <div class="title-bar" id="titleBar">
-  <!-- 1段目左：検索ボタン（検索モード中は非表示。検索モード解除はヘッダー2段目の＜ or スマホ戻るボタン） -->
+  <!-- 1段目左：検索ボタン（タップで検索モーダルを開く。検索モード中は非表示） -->
   <div class="title-bar-slot">
-    <button class="header-btn" id="btnSearch" onclick="toggleSearchMode()" title="検索" style="display:none">
+    <button class="header-btn" id="btnSearch" onclick="openSearchModal()" title="検索" style="display:none">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     </button>
   </div>
@@ -474,6 +474,10 @@ img { display: block; max-width: 100%; }
   <!-- 戻るボタン：トップ画面以外で表示。スマホの戻るボタンと同じ挙動（history.back経由でpopstateハンドラに委譲） -->
   <button class="header-back" id="btnBack" onclick="history.back()">
     <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <!-- トップ表示モード切替ボタン（フォルダ⇔アイテム）：通常モードのトップ画面のみ、2段目左端に固定表示 -->
+  <button class="header-btn" id="btnTopMode" onclick="toggleTopMode()" title="フォルダ/アイテム切替" style="display:none">
+    <svg viewBox="0 0 24 24"><rect x="8" y="3" width="12" height="12" rx="2" fill="none"/><rect x="4" y="9" width="12" height="12" rx="2" fill="var(--primary)"/></svg>
   </button>
   <div class="header-title" id="headerTitle"></div>
   <!-- 件数バッジ（登録件数／フィルター件数共用） -->
@@ -548,48 +552,174 @@ img { display: block; max-width: 100%; }
   display: block;
 }
 
-/* --- 検索入力欄のラッパー --- */
+/* --- 検索状態チップ（検索モード中：語句・件数・送りボタン・✕を横並び） --- */
 .search-wrap {
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; gap: 2px;
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 0 10px;
+  padding: 0 4px 0 10px;
   height: 40px;
 }
-.search-wrap svg { width: 18px; height: 18px; stroke: var(--text-lighter); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
-.search-wrap input {
-  flex: 1; min-width: 0; border: none; outline: none;
-  background: none; height: 100%;
-  font-size: 14px; color: var(--text);
-}
-.search-wrap input::placeholder { color: var(--text-lighter); }
+.search-wrap > svg { width: 18px; height: 18px; stroke: var(--text-lighter); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
 
-/* --- 検索バー入力中の背景色（画面によって色を分ける） --- */
+/* --- チップ内の検索語句表示（タップでモーダル再表示） --- */
+.search-chip-query {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center;
+  height: 100%;
+  padding: 0 6px;
+  font-size: 14px; color: var(--text);
+  text-align: left;
+  border-radius: 6px;
+}
+.search-chip-query span {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.search-chip-query:active { background: rgba(0,0,0,0.04); }
+
+/* --- 検索バー（チップ）の背景色：全画面ピンクで統一 --- */
 .search-wrap.is-list-search {
-  background: #EDF3FA;  /* 一覧画面用：薄ピンク */
+  background: #FAEDF7;  /* 一覧画面用（詳細画面と同色） */
 }
 .search-wrap.is-detail-search {
-  background: #FAEDF7;  /* 詳細画面用：薄クリーム */
+  background: #FAEDF7;  /* 詳細画面用 */
 }
 
-/* --- 検索ヒット件数表示（検索バー内、×ボタンの左） --- */
+/* --- 検索ヒット件数表示（チップ内、送りボタンの左） --- */
 .search-hit-count {
   display: none;
   font-size: 12px;
   color: var(--text-light);
   white-space: nowrap;
   flex-shrink: 0;
+  padding: 0 2px;
 }
 
-/* --- クリアボタン（入力時のみ表示） --- */
-.search-clear {
-  width: 22px; height: 22px;
+/* --- ハイライト送りボタン（↑↓、メモ詳細画面のみ表示） --- */
+.search-nav-btn {
+  width: 34px; height: 34px;
   display: none; align-items: center; justify-content: center;
   border-radius: 50%; flex-shrink: 0;
 }
-.search-clear.show { display: flex; }
-.search-clear svg { width: 16px; height: 16px; stroke: var(--text-lighter); }
+.search-nav-btn:active { background: rgba(0,0,0,0.06); }
+.search-nav-btn svg { width: 20px; height: 20px; stroke: var(--text-light); fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.search-nav-btn.disabled { opacity: 0.35; pointer-events: none; }
+
+/* --- 検索モード解除ボタン（✕、チップ右端） --- */
+.search-close {
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; flex-shrink: 0;
+}
+.search-close:active { background: rgba(0,0,0,0.06); }
+.search-close svg { width: 17px; height: 17px; stroke: var(--text-light); fill: none; stroke-width: 2.2; stroke-linecap: round; }
+
+/* --- 検索モーダル（PEGエディタ式：入力欄＋履歴チップ＋実行ボタン） --- */
+.search-modal {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 300;
+  align-items: flex-start; justify-content: center;
+  /* 50%は「画面の幅」基準（CSS仕様）。高さ基準にしないことで、
+     キーボードの出入りで画面の高さが伸縮してもモーダル位置が動かない（PEGエディタと同方式） */
+  padding-top: 50%;
+}
+.search-modal.show { display: flex; }
+.search-modal-dlg {
+  width: calc(100% - 40px); max-width: 440px;
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 18px 16px 14px;
+  box-sizing: border-box;
+  box-shadow: var(--shadow-md);
+}
+.search-modal-title {
+  font-size: 15px; font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+.search-modal-inrow {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 12px;
+}
+#smIn {
+  flex: 1; min-width: 0;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#smIn:focus { border-color: var(--accent); }
+#smIn::-webkit-search-cancel-button { display: none; }
+#smIn::-webkit-search-decoration { display: none; }
+.sm-clear {
+  flex-shrink: 0;
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--border-light);
+}
+.sm-clear:active { background: var(--border); }
+.sm-clear svg { width: 16px; height: 16px; stroke: var(--text-light); fill: none; stroke-width: 2.2; stroke-linecap: round; }
+.sm-hist-title {
+  font-size: 11px; color: var(--text-lighter);
+  margin-bottom: 6px;
+}
+.sm-hist { display: flex; flex-wrap: wrap; gap: 6px; }
+.sm-hist-item {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
+.sm-hist-item:active { border-color: var(--accent); }
+.sm-btns { display: flex; gap: 8px; margin-top: 14px; }
+.sm-cancel {
+  flex: 1; padding: 12px;
+  border-radius: 8px;
+  background: var(--border-light);
+  color: var(--text);
+  font-size: 14px;
+}
+.sm-cancel:active { background: var(--border); }
+.sm-go {
+  flex: 1; padding: 12px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px; font-weight: 600;
+}
+.sm-go:active { opacity: 0.8; }
+
+/* --- 履歴削除ポップアップ（履歴チップ長押しで表示） --- */
+.sm-hist-popup {
+  position: fixed;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+  z-index: 310;
+  overflow: hidden;
+  min-width: 100px;
+}
+.sm-hist-popup-btn {
+  display: block; width: 100%;
+  padding: 11px 16px;
+  background: var(--card-bg);
+  color: var(--danger);
+  font-size: 13px;
+  text-align: center;
+}
+.sm-hist-popup-btn:active { background: var(--border-light); }
 
 /* --- カテゴリフィルター適用中の通知バー --- */
 .filter-bar {
@@ -629,28 +759,67 @@ img { display: block; max-width: 100%; }
 }
 .filter-bar-close:active { background: rgba(0,0,0,0.05); }
 
-/* --- 検索ハイライト --- */
+/* --- 検索ハイライト（通常マッチ：薄ピンク） --- */
 mark.hl {
-  background: #FF9ECD;
+  background: #FFD9EA;
   color: inherit;
   padding: 0 1px;
   border-radius: 2px;
+}
+
+/* --- 検索ハイライト（現在マッチ：濃いピンク、↓↑送りで選択中の1件） --- */
+mark.hl.hl-cur {
+  background: #FF9ECD;
 }
 
 </style>
 
 <!-- ----- #SEARCH HTML ----- -->
 
-<!-- 検索バー：ブランド名・商品名・成分などを横断検索 -->
+<!-- 検索状態チップ：検索モード中に語句・件数・送りボタン・✕を表示 -->
 <div class="search-bar" id="searchBar">
   <div class="search-wrap">
     <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input type="text" id="searchInput" placeholder="検索..." oninput="onSearch()"
-           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <!-- 語句表示エリア：ここをタップするとモーダルが再表示され、語句を変えて再検索できる -->
+    <button class="search-chip-query" onclick="openSearchModal()">
+      <span id="searchChipText"></span>
+    </button>
     <span class="search-hit-count" id="searchTotalCount"></span>
-    <button class="search-clear" id="searchClear" onclick="clearSearch()">
+    <!-- ハイライト送りボタン（メモ詳細画面のみ表示） -->
+    <button class="search-nav-btn" id="btnNavPrev" onclick="memoNavJump(-1)" title="前のヒット">
+      <svg viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></svg>
+    </button>
+    <button class="search-nav-btn" id="btnNavNext" onclick="memoNavJump(1)" title="次のヒット">
+      <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <!-- 検索モード解除ボタン -->
+    <button class="search-close" id="btnSearchClose" onclick="closeSearchByX()" title="検索を解除">
       <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
+  </div>
+</div>
+
+<!-- 検索クエリ保持用の隠しinput（各render関数がここから検索語句を読む） -->
+<input type="hidden" id="searchInput" value="">
+
+<!-- 検索モーダル：語句入力＋履歴チップ＋キャンセル/検索ボタン -->
+<div class="search-modal" id="searchModal">
+  <div class="search-modal-dlg">
+    <div class="search-modal-title">検索</div>
+    <div class="search-modal-inrow">
+      <input type="search" id="smIn" placeholder="検索語句を入力..." autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="sm-clear" id="smClear" onclick="smClearInput()">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="smHistWrap" style="display:none">
+      <div class="sm-hist-title">履歴</div>
+      <div class="sm-hist" id="smHist"></div>
+    </div>
+    <div class="sm-btns">
+      <button class="sm-cancel" onclick="closeSearchModal()">キャンセル</button>
+      <button class="sm-go" onclick="execSearchFromModal()">検索</button>
+    </div>
   </div>
 </div>
 
@@ -851,19 +1020,22 @@ mark.hl {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* --- グリッド表示 --- */
-.product-list.grid-view {
+/* --- グリッド表示（フォルダ内＋トップ画面アイテム表示で共用） --- */
+.product-list.grid-view,
+.brand-list.grid-view {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
-.product-list.grid-view .product-card {
+.product-list.grid-view .product-card,
+.brand-list.grid-view .product-card {
   flex-direction: column;
   padding: 0;
   gap: 0;
   overflow: hidden;
 }
-.product-list.grid-view .product-thumb {
+.product-list.grid-view .product-thumb,
+.brand-list.grid-view .product-thumb {
   width: 100%;
   height: auto;
   aspect-ratio: 1 / 1;
@@ -871,24 +1043,29 @@ mark.hl {
   padding: 6px;
   background: var(--card-bg);
 }
-.product-list.grid-view .product-thumb img {
+.product-list.grid-view .product-thumb img,
+.brand-list.grid-view .product-thumb img {
   object-fit: contain;
 }
-.product-list.grid-view .product-thumb svg {
+.product-list.grid-view .product-thumb svg,
+.brand-list.grid-view .product-thumb svg {
   width: 32px; height: 32px;
 }
-.product-list.grid-view .product-info {
+.product-list.grid-view .product-info,
+.brand-list.grid-view .product-info {
   padding: 6px 8px 8px;
   width: 100%;
   box-sizing: border-box;
   gap: 2px;
   justify-content: flex-start;
 }
-.product-list.grid-view .product-brand-label {
+.product-list.grid-view .product-brand-label,
+.brand-list.grid-view .product-brand-label {
   font-size: 10px;
   line-height: 1.3;
 }
-.product-list.grid-view .product-name {
+.product-list.grid-view .product-name,
+.brand-list.grid-view .product-name {
   font-size: 12px;
   white-space: normal;
   overflow: hidden;
@@ -898,11 +1075,13 @@ mark.hl {
   line-height: 1.3;
   word-break: break-word;
 }
-.product-list.grid-view .product-category {
+.product-list.grid-view .product-category,
+.brand-list.grid-view .product-category {
   font-size: 10px;
   padding: 1px 5px;
 }
-.product-list.grid-view .product-price {
+.product-list.grid-view .product-price,
+.brand-list.grid-view .product-price {
   display: none;
 }
 
@@ -2539,11 +2718,18 @@ let searchOpenedAtDetail = false; // 検索モードを詳細画面で開始し�
 // 商品一覧の表示モード（list / grid）
 let currentViewMode = localStorage.getItem('pegCosmeViewMode') || 'list';
 
+// トップ画面の表示モード（folder：フォルダ一覧 / item：全アイテムカード直接表示）
+let currentTopMode = localStorage.getItem('pegCosmeTopMode') || 'folder';
+
+// トップ画面アイテム表示のリスト⇔グリッド（フォルダ内のcurrentViewModeとは独立）
+let currentTopViewMode = localStorage.getItem('pegCosmeTopViewMode') || 'list';
+
 // --- スクロール位置保存用 ---
 let scrollPositions = {};       // 一覧画面ごとのスクロール位置を保存
 
 // --- ソート・フィルター状態 ---
 let currentSort = 'createdAt_desc';        // トップ画面（ブランド一覧）のフォルダ並びソート
+let currentTopItemSort = 'createdAt_desc'; // トップ画面アイテム表示のカード並びソート
 let currentProductSort = 'createdAt_desc'; // フォルダ内（ブランド/タグ）のカード並びソート
 let currentMemoSort = 'date_desc';         // メモタブのソート(デフォルト：日付新しい順)
 let currentCategoryFilter = null;          // カテゴリフィルター(null＝すべて)
@@ -2651,7 +2837,6 @@ function showScreen(name, pushHistory = true) {
   // 一覧画面に「前進」する時のみ検索クエリをクリア
   if (pushHistory && (name === 'brand' || name === 'products' || name === 'tagProducts' || name === 'memo')) {
     document.getElementById('searchInput').value = '';
-    document.getElementById('searchClear').classList.remove('show');
   }
 
   // 中央バッジ用の余白クラスをいったん外す(各画面のcaseで必要に応じて再付与)
@@ -2671,6 +2856,7 @@ function showScreen(name, pushHistory = true) {
   const sortBtn = document.getElementById('btnSort');
   const filterBtn = document.getElementById('btnFilter');
   const viewModeBtn = document.getElementById('btnViewMode');
+  const topModeBtn = document.getElementById('btnTopMode');
   const detailEditBtn = document.getElementById('btnDetailEdit');
   const detailDeleteBtn = document.getElementById('btnDetailDelete');
   const memoSaveBtn = document.getElementById('btnMemoSave');
@@ -2690,6 +2876,7 @@ function showScreen(name, pushHistory = true) {
   sortBtn.style.display = 'none';
   filterBtn.style.display = 'none';
   if (viewModeBtn) viewModeBtn.style.display = 'none';
+  if (topModeBtn) topModeBtn.style.display = 'none';
   detailEditBtn.style.display = 'none';
   detailDeleteBtn.style.display = 'none';
   memoSaveBtn.style.display = 'none';
@@ -2723,6 +2910,11 @@ function showScreen(name, pushHistory = true) {
       searchBtn.style.display = 'flex';
       sortBtn.style.display = 'flex';
       filterBtn.style.display = 'flex';
+      // トップ表示モード切替ボタン（フォルダ⇔アイテム）を表示
+      if (topModeBtn) topModeBtn.style.display = 'flex';
+      // リスト⇔グリッド切替ボタンはアイテム表示モードの時だけ表示
+      if (viewModeBtn) viewModeBtn.style.display = (currentTopMode === 'item') ? 'flex' : 'none';
+      updateTopModeIcon();
       totalCount.style.display = 'block';
       // 中央バッジを使うので、タイトル側に余白を確保
       headerEl.classList.add('title-with-center-count');
@@ -2863,7 +3055,6 @@ function showScreen(name, pushHistory = true) {
     if (searchOpenedAtDetail) {
       // 詳細画面で開始した検索 → 一覧画面に戻ったらクエリをクリアして検索モードを完全解除
       document.getElementById('searchInput').value = '';
-      document.getElementById('searchClear').classList.remove('show');
       searchOpenedAtDetail = false;
     } else if (document.getElementById('searchInput').value.trim() !== '') {
       // 一覧画面で開始した検索 → 検索モードを復元
@@ -2978,6 +3169,13 @@ window.addEventListener('popstate', (e) => {
     return;
   }
 
+  // 検索モーダルが開いていたら閉じるだけ
+  if (document.getElementById('searchModal').classList.contains('show')) {
+    closeSearchModal();
+    history.pushState({ screen: currentScreen }, '');
+    return;
+  }
+
   // モーダルが開いていたら閉じるだけ
   if (document.getElementById('modal').classList.contains('show')) {
     closeModal();
@@ -3081,7 +3279,6 @@ function switchTab(tab) {
   });
   screenHistory = [];
   document.getElementById('searchInput').value = '';
-  document.getElementById('searchClear').classList.remove('show');
 
   if (tab === 'card') {
     showScreen('brand', false);
@@ -3258,8 +3455,10 @@ function renderSortDropdown() {
     active = currentMemoSort;
   } else if (currentScreen === 'products' || currentScreen === 'tagProducts') {
     active = currentProductSort;  // フォルダ内画面
+  } else if (currentTopMode === 'item') {
+    active = currentTopItemSort;   // トップ画面（アイテム表示モード）
   } else {
-    active = currentSort;          // トップ画面（brand）
+    active = currentSort;          // トップ画面（フォルダ表示モード）
   }
 
   let html = '<div class="dropdown-section-title">並び替え</div>';
@@ -3268,7 +3467,8 @@ function renderSortDropdown() {
   //  - トップ画面（brand）：folderOrder があれば有効
   //  - ブランドフォルダ画面：brand.sortOrder があれば有効
   //  - タグフォルダ画面：tag.cardOrder があれば有効
-  if (!isMemo) {
+  // ※トップ画面のアイテム表示モードでは「並べ替え順」は使えないので出さない
+  if (!isMemo && !(currentScreen === 'brand' && currentTopMode === 'item')) {
     let hasOrder = false;
     if (currentScreen === 'brand') {
       hasOrder = Array.isArray(folderOrder) && folderOrder.length > 0;
@@ -3374,10 +3574,17 @@ async function applySort(sortKey) {
   } else {
     closeAllDropdowns();
     if (currentScreen === 'brand') {
-      // トップ画面：フォルダ並びソート
-      currentSort = sortKey;
-      // 次回起動時に復元できるようDBに保存
-      await dbPut('meta', { key: 'topSort', value: sortKey });
+      if (currentTopMode === 'item') {
+        // トップ画面（アイテム表示モード）：カード並びソート
+        currentTopItemSort = sortKey;
+        // 次回起動時に復元できるようDBに保存
+        await dbPut('meta', { key: 'topItemSort', value: sortKey });
+      } else {
+        // トップ画面（フォルダ表示モード）：フォルダ並びソート
+        currentSort = sortKey;
+        // 次回起動時に復元できるようDBに保存
+        await dbPut('meta', { key: 'topSort', value: sortKey });
+      }
       renderBrands();
     } else if (currentScreen === 'products') {
       // ブランドフォルダ内：そのブランドオブジェクトに sortKey を保存
@@ -3522,6 +3729,25 @@ async function loadAllData() {
   folderOrder = Array.isArray(folderOrderMeta?.value) ? folderOrderMeta.value : [];
 }
 
+// --- トップ画面の表示モード（フォルダ⇔アイテム）切替 ---
+function toggleTopMode() {
+  currentTopMode = currentTopMode === 'folder' ? 'item' : 'folder';
+  localStorage.setItem('pegCosmeTopMode', currentTopMode);
+  // リスト⇔グリッド切替ボタンはアイテム表示モードの時だけ表示
+  const viewModeBtn = document.getElementById('btnViewMode');
+  if (viewModeBtn) viewModeBtn.style.display = (currentTopMode === 'item') ? 'flex' : 'none';
+  updateTopModeIcon();
+  renderBrands();
+}
+
+// --- トップ表示モードボタンのアイコン更新 ---
+// フォルダ⇔アイテムどちらのモードでも「2枚重なったカード」アイコンで固定。
+function updateTopModeIcon() {
+  const btn = document.getElementById('btnTopMode');
+  if (!btn) return;
+  btn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="8" y="3" width="12" height="12" rx="2" fill="none"/><rect x="4" y="9" width="12" height="12" rx="2" fill="var(--primary)"/></svg>`;
+}
+
 // --- ブランド一覧を描画 ---
 async function renderBrands() {
   await loadAllData();
@@ -3534,8 +3760,11 @@ async function renderBrands() {
   const empty = document.getElementById('brandEmpty');
   const indexBar = document.getElementById('indexBar');
 
-  // === カテゴリフィルター中 or 検索中：商品カードを直接表示 ===
-  if (currentCategoryFilter || query) {
+  // トップ画面のリスト⇔グリッド状態を反映（アイテム表示モード×グリッドの時だけgrid-view）
+  applyTopViewMode();
+
+  // === カテゴリフィルター中・検索中・アイテム表示モード：商品カードを直接表示 ===
+  if (currentCategoryFilter || query || currentTopMode === 'item') {
     indexBar.classList.remove('show');
     list.classList.remove('with-index-bar');
 
@@ -3573,8 +3802,15 @@ async function renderBrands() {
       document.getElementById('searchTotalCount').textContent = products.length + '件';
     }
 
-    // ソート（トップ画面のフィルタ／検索結果では custom は使えないのでフォールバック）
-    const sortKeyForProducts = currentSort === 'custom' ? 'createdAt_desc' : currentSort;
+    // ソート
+    let sortKeyForProducts;
+    if (currentTopMode === 'item') {
+      // アイテム表示モード：専用のカード並びソートを使う
+      sortKeyForProducts = currentTopItemSort;
+    } else {
+      // フォルダ表示中のフィルタ／検索結果：customはカードに使えないのでフォールバック
+      sortKeyForProducts = currentSort === 'custom' ? 'createdAt_desc' : currentSort;
+    }
     products = sortProducts(products, sortKeyForProducts);
 
     // 0件
@@ -3583,8 +3819,11 @@ async function renderBrands() {
       empty.style.display = 'flex';
       if (query) {
         empty.querySelector('p').textContent = '一致する商品が見つかりません';
-      } else {
+      } else if (currentCategoryFilter) {
         empty.querySelector('p').textContent = `「${currentCategoryFilter === 'group:skincare' ? 'スキンケア' : currentCategoryFilter === 'group:makeup' ? 'メイク' : currentCategoryFilter}」の商品はありません`;
+      } else {
+        // アイテム表示モードで商品0件
+        empty.querySelector('p').innerHTML = 'まだ何も登録されていません<br>＋ボタンからカードを追加してください';
       }
       return;
     }
@@ -4120,13 +4359,20 @@ function openTag(tagId) {
    ══════════════════════════════════════════ */
 
 // --- 表示モード（リスト⇔グリッド）切替 ---
+// トップ画面（brand）ではトップ専用の状態を、フォルダ内では従来の状態を切り替える
 function toggleViewMode() {
-  currentViewMode = currentViewMode === 'list' ? 'grid' : 'list';
-  localStorage.setItem('pegCosmeViewMode', currentViewMode);
-  applyViewMode();
+  if (currentScreen === 'brand') {
+    currentTopViewMode = currentTopViewMode === 'list' ? 'grid' : 'list';
+    localStorage.setItem('pegCosmeTopViewMode', currentTopViewMode);
+    applyTopViewMode();
+  } else {
+    currentViewMode = currentViewMode === 'list' ? 'grid' : 'list';
+    localStorage.setItem('pegCosmeViewMode', currentViewMode);
+    applyViewMode();
+  }
 }
 
-// --- 現在の表示モードを画面に反映 ---
+// --- 現在の表示モードを画面に反映（フォルダ内：productList） ---
 function applyViewMode() {
   const list = document.getElementById('productList');
   if (list) {
@@ -4139,11 +4385,31 @@ function applyViewMode() {
   updateViewModeIcon();
 }
 
+// --- トップ画面の表示モードを反映（brandList） ---
+// アイテム表示モード×グリッドの時だけ grid-view を付与。
+// フォルダ表示モードでは必ずリスト形式（グリッドにしない）。
+function applyTopViewMode() {
+  const list = document.getElementById('brandList');
+  if (list) {
+    // 検索モード中も brandList にカードが並ぶので、グリッド切替を効かせる
+    const inSearch = document.querySelector('.header').classList.contains('search-mode');
+    const gridEligible = (currentTopMode === 'item') || inSearch;
+    if (gridEligible && currentTopViewMode === 'grid') {
+      list.classList.add('grid-view');
+    } else {
+      list.classList.remove('grid-view');
+    }
+  }
+  if (currentScreen === 'brand') updateViewModeIcon();
+}
+
 // --- 表示切替ボタンのアイコンを現在のモードに合わせて更新 ---
+// トップ画面ではcurrentTopViewMode、フォルダ内ではcurrentViewModeを参照する
 function updateViewModeIcon() {
   const btn = document.getElementById('btnViewMode');
   if (!btn) return;
-  if (currentViewMode === 'grid') {
+  const mode = (currentScreen === 'brand') ? currentTopViewMode : currentViewMode;
+  if (mode === 'grid') {
     // グリッド表示中 → タップするとリストへ → リストアイコン（横長の長方形2つ縦並び）
     btn.innerHTML = `<svg viewBox="0 0 24 24">
   <rect x="3" y="4" width="18" height="6" fill="none" stroke="white" stroke-width="2"/>
@@ -4742,6 +5008,7 @@ function updateHeaderForSortMode() {
   const filterBtn = document.getElementById('btnFilter');
   const searchBtn = document.getElementById('btnSearch');
   const viewModeBtn = document.getElementById('btnViewMode');
+  const topModeBtn = document.getElementById('btnTopMode');
   const title = document.getElementById('headerTitle');
   const confirmBtn = document.getElementById('btnSortConfirm');
   const cancelBtn = document.getElementById('btnSortCancel');
@@ -4756,6 +5023,7 @@ function updateHeaderForSortMode() {
     filterBtn.style.display = 'none';
     searchBtn.style.display = 'none';
     viewModeBtn.style.display = 'none';
+    if (topModeBtn) topModeBtn.style.display = 'none';
     confirmBtn.style.display = 'inline-block';
     cancelBtn.style.display = 'inline-block';
     title.textContent = '並べ替え';
@@ -4772,11 +5040,17 @@ function updateHeaderForSortMode() {
     searchBtn.style.display = '';
     // 表示切替ボタンは画面別に分岐
     // ・products / tagProducts：表示
-    // ・brand（トップ画面）：非表示
+    // ・brand（トップ画面）：アイテム表示モードの時だけ表示
     if (currentScreen === 'products' || currentScreen === 'tagProducts') {
       viewModeBtn.style.display = '';
+    } else if (currentScreen === 'brand' && currentTopMode === 'item') {
+      viewModeBtn.style.display = 'flex';
     } else {
       viewModeBtn.style.display = 'none';
+    }
+    // トップ表示モード切替ボタンはトップ画面のみ表示
+    if (topModeBtn) {
+      topModeBtn.style.display = (currentScreen === 'brand') ? 'flex' : 'none';
     }
     // 並べ替え専用ボタンは HTML側でインラインに display:none が書かれている。
     // 空文字でクリアするとCSSルールに該当指定がなく表示されてしまうため、
@@ -6325,6 +6599,9 @@ async function renderMemoDetail() {
     </div>`;
   }
   document.getElementById('memoDetailBody').innerHTML = html;
+
+  // 検索モード中ならハイライト送りを初期化（mark要素を集めて件数を表示）
+  initMemoSearchNav();
 }
 
 // --- メモフォームを開く（新規 or 編集） ---
@@ -6696,18 +6973,166 @@ function updateDetailHitCount() {
   document.getElementById('searchTotalCount').textContent = count + '件';
 }
 
-// --- 検索モードの開閉トグル ---
-function toggleSearchMode() {
-  const header = document.querySelector('.header');
-  if (header.classList.contains('search-mode')) {
-    closeSearchMode();
-  } else {
-    openSearchMode();
+/* ── 検索モーダル制御（PEGエディタ式：語句入力→検索ボタンで明示実行） ── */
+
+// --- 検索履歴（最大5件・IndexedDBに永続化） ---
+let srchHist = [];
+let activeHistPopup = null;  // 履歴削除ポップアップの参照
+
+// --- 検索履歴をIndexedDBから読み込み（起動時にinitから呼ばれる） ---
+async function loadSearchHistory() {
+  const saved = await dbGet('meta', 'searchHistory');
+  if (Array.isArray(saved?.value)) srchHist = saved.value;
+}
+
+// --- 検索履歴をIndexedDBへ保存 ---
+function saveSearchHistory() {
+  dbPut('meta', { key: 'searchHistory', value: srchHist });
+}
+
+// --- 履歴削除ポップアップを閉じる ---
+function closeHistPopup() {
+  if (activeHistPopup) {
+    activeHistPopup.parentNode.removeChild(activeHistPopup);
+    activeHistPopup = null;
   }
 }
 
-// --- 検索モードを開く（ヘッダー全体をピンクのナビバーに、検索バー表示） ---
-// pushHistory: 履歴に追加するか（trueなら新規、falseなら復元）
+// --- 検索モーダルを開く（🔍ボタン／チップの語句タップから） ---
+function openSearchModal() {
+  closeHistPopup();
+  // 検索モード中なら現在の語句を入力欄に反映（語句を変えて再検索できる）
+  document.getElementById('smIn').value = document.getElementById('searchInput').value.trim();
+  buildSearchHist();
+  document.getElementById('searchModal').classList.add('show');
+  setTimeout(() => document.getElementById('smIn').focus(), 80);
+}
+
+// --- 検索モーダルを閉じる ---
+function closeSearchModal() {
+  closeHistPopup();
+  document.getElementById('searchModal').classList.remove('show');
+}
+
+// --- モーダルの入力欄をクリア ---
+function smClearInput() {
+  const smIn = document.getElementById('smIn');
+  smIn.value = '';
+  smIn.focus();
+}
+
+// --- 履歴チップ一覧を再描画（タップ→入力欄に反映、長押し→削除ポップアップ） ---
+function buildSearchHist() {
+  const wrap = document.getElementById('smHistWrap');
+  const hist = document.getElementById('smHist');
+  if (!srchHist.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  hist.innerHTML = '';
+  for (let i = srchHist.length - 1; i >= 0; i--) {
+    const q = srchHist[i];
+    const el = document.createElement('span');
+    el.className = 'sm-hist-item';
+    el.textContent = q;
+
+    // ① タップ → 入力フォームに反映するだけ（即実行しない）
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const smIn = document.getElementById('smIn');
+      smIn.value = q;
+      smIn.focus();
+    });
+
+    // ② 長押し → 削除ポップアップ
+    let longTimer = null;
+    el.addEventListener('touchstart', () => {
+      longTimer = setTimeout(() => {
+        longTimer = null;
+        closeHistPopup();
+        const popup = document.createElement('div');
+        popup.className = 'sm-hist-popup';
+        const btn = document.createElement('button');
+        btn.className = 'sm-hist-popup-btn';
+        btn.textContent = '削除';
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const hi = srchHist.indexOf(q);
+          if (hi !== -1) srchHist.splice(hi, 1);
+          saveSearchHistory();
+          closeHistPopup();
+          buildSearchHist();
+        });
+        popup.appendChild(btn);
+        document.body.appendChild(popup);
+        // チップの上に配置（ポップアップの高さを測ってから位置決め）
+        const rect = el.getBoundingClientRect();
+        const popH = popup.offsetHeight;
+        popup.style.left = rect.left + 'px';
+        popup.style.top = (rect.top - popH - 4) + 'px';
+        activeHistPopup = popup;
+      }, 500);
+    }, { passive: true });
+    el.addEventListener('touchend', () => {
+      if (longTimer) { clearTimeout(longTimer); longTimer = null; }
+    });
+    el.addEventListener('touchmove', () => {
+      if (longTimer) { clearTimeout(longTimer); longTimer = null; }
+    });
+
+    hist.appendChild(el);
+  }
+}
+
+// --- モーダルの「検索」ボタン ---
+function execSearchFromModal() {
+  execSearch(document.getElementById('smIn').value.trim());
+}
+
+// --- 検索を実行（履歴更新→検索モードに入り再描画） ---
+function execSearch(q) {
+  if (!q) return;
+  closeSearchModal();
+
+  // 履歴に追加（重複除去・最大5件）して永続化
+  const idx = srchHist.indexOf(q);
+  if (idx !== -1) srchHist.splice(idx, 1);
+  srchHist.push(q);
+  if (srchHist.length > 5) srchHist.shift();
+  saveSearchHistory();
+
+  const wasActive = document.querySelector('.header').classList.contains('search-mode');
+  document.getElementById('searchInput').value = q;
+
+  if (!wasActive) {
+    // 新規検索：検索を開始した画面が詳細画面かを記録（戻る時の挙動制御用）
+    searchOpenedAtDetail = (currentScreen === 'detail' || currentScreen === 'memoDetail');
+    openSearchMode(true);
+  } else {
+    // 検索モード中の語句変更：チップ表示と背景色だけ更新
+    document.getElementById('searchChipText').textContent = '"' + q + '"';
+    updateSearchBarColor();
+  }
+
+  rerenderForSearch();
+}
+
+// --- 現在の画面を検索状態で再描画 ---
+function rerenderForSearch() {
+  if (currentTab === 'card') {
+    if (currentScreen === 'brand') renderBrands();
+    else if (currentScreen === 'products') renderProducts();
+    else if (currentScreen === 'tagProducts') renderTagProducts();
+    else if (currentScreen === 'detail') {
+      renderDetail();
+      updateDetailHitCount();
+    }
+  } else {
+    if (currentScreen === 'memo') renderMemos();
+    else if (currentScreen === 'memoDetail') renderMemoDetail();  // 件数はinitMemoSearchNavが設定
+  }
+}
+
+// --- 検索モードを開く（ヘッダー全体をピンクのナビバーに、検索チップ表示） ---
+// pushHistory: 履歴に追加するか（trueなら新規検索、falseなら画面遷移時の復元）
 function openSearchMode(pushHistory = true) {
   const header = document.querySelector('.header');
   if (header.classList.contains('search-mode')) return;
@@ -6716,7 +7141,7 @@ function openSearchMode(pushHistory = true) {
   header.classList.add('search-mode');
   document.querySelector('.title-bar').classList.add('search-mode');
 
-  // ★追加：インデックスバーを非表示にする（検索モード中はピンクヘッダーに連動）
+  // インデックスバーを非表示にする（検索モード中はピンクヘッダーに連動）
   const indexBar = document.getElementById('indexBar');
   if (indexBar) indexBar.classList.remove('show');
   const brandList = document.getElementById('brandList');
@@ -6725,12 +7150,23 @@ function openSearchMode(pushHistory = true) {
   // ステータスバー色をピンクに切り替え
   updateThemeColor('search');
 
-  // 検索バー表示
+  // 検索チップ表示＆語句をセット
   document.getElementById('searchBar').classList.add('active');
+  const query = document.getElementById('searchInput').value.trim();
+  document.getElementById('searchChipText').textContent = query ? '"' + query + '"' : '';
+
+  // ハイライト送りボタン（↑↓）はメモ詳細画面でのみ表示
+  const showNav = (currentScreen === 'memoDetail');
+  document.getElementById('btnNavPrev').style.display = showNav ? 'flex' : 'none';
+  document.getElementById('btnNavNext').style.display = showNav ? 'flex' : 'none';
 
   // 通常モード要素を非表示（検索モード中は1段目左の検索ボタンを隠す）
   document.getElementById('btnSearch').style.display = 'none';
   document.getElementById('headerTotalCount').style.display = 'none';
+  // 検索モード中はトップ表示モード切替ボタン（重なったカード）を隠す
+  // （検索中はフォルダ/アイテムに関わらずカード直接表示になるため、押しても無意味）
+  const topModeBtnS = document.getElementById('btnTopMode');
+  if (topModeBtnS) topModeBtnS.style.display = 'none';
 
   // 検索モード要素を表示
   document.getElementById('searchTotalCount').style.display = 'block';
@@ -6741,27 +7177,30 @@ function openSearchMode(pushHistory = true) {
     document.getElementById('btnBack').style.display = 'flex';
   }
 
-  if (pushHistory) {
-    // 検索開始画面の記録：クエリが空（新規検索）の場合のみ更新する
-    const currentQuery = document.getElementById('searchInput').value.trim();
-    if (currentQuery === '') {
-      searchOpenedAtDetail = (currentScreen === 'detail' || currentScreen === 'memoDetail');
-    }
+  // トップ画面（brand）の検索中はリスト⇔グリッド切替ボタンを表示する
+  // （検索結果は brandList に並ぶので、applyTopViewMode() でグリッド反映される）
+  const viewModeBtnS = document.getElementById('btnViewMode');
+  if (viewModeBtnS && currentScreen === 'brand') {
+    viewModeBtnS.style.display = 'flex';
+    updateViewModeIcon();
+    applyTopViewMode();
+  }
 
-    // 件数初期化、履歴push、フォーカス
+  if (pushHistory) {
+    // 新規検索：件数を初期化してブラウザ履歴に積む（戻るボタンで解除できるように）
     document.getElementById('searchTotalCount').textContent = '';
     history.pushState({ screen: currentScreen, search: true }, '');
-    setTimeout(() => {
-      document.getElementById('searchInput').focus();
-    }, 50);
   } else {
     // 復元の場合：詳細画面なら件数を再計算（一覧画面はrender関数側で更新される）
-    if (currentScreen === 'detail' || currentScreen === 'memoDetail') {
+    if (currentScreen === 'detail') {
       updateDetailHitCount();
+    } else if (currentScreen === 'memoDetail') {
+      // メモ詳細はrenderMemoDetail→initMemoSearchNavが件数をセットする
+      updateMemoNavCount();
     }
   }
 
-  // 検索バー背景色を更新（クエリが残っていれば画面に応じた色を付与）
+  // 検索チップ背景色を更新（画面に応じた色を付与）
   updateSearchBarColor();
 }
 
@@ -6777,13 +7216,26 @@ function closeSearchMode() {
   // ステータスバー色をブルーに戻す
   updateThemeColor('normal');
 
-  // 検索バー非表示＆クリア
+  // 検索チップ非表示＆クエリをクリア
   document.getElementById('searchBar').classList.remove('active');
   document.getElementById('searchInput').value = '';
-  document.getElementById('searchClear').classList.remove('show');
+  document.getElementById('searchChipText').textContent = '';
 
   // 検索モード要素を非表示
   document.getElementById('searchTotalCount').style.display = 'none';
+
+  // ハイライト送りの状態をリセット
+  memoNavMarks = [];
+  memoNavIdx = -1;
+  document.getElementById('btnNavPrev').style.display = 'none';
+  document.getElementById('btnNavNext').style.display = 'none';
+
+  // 検索モード中に出していたトップ画面用グリッド切替ボタンを片付ける
+  //  （brand画面のときだけ出していた。通常モード時の表示判定はこの後の分岐に任せる）
+  if (currentScreen === 'brand') {
+    document.getElementById('btnViewMode').style.display =
+      (currentTopMode === 'item') ? 'flex' : 'none';
+  }
 
   // 通常モード要素を画面に応じて再表示
   if (currentScreen === 'brand' || currentScreen === 'memo') {
@@ -6791,6 +7243,11 @@ function closeSearchMode() {
     document.getElementById('headerTotalCount').style.display = 'block';
     // トップ画面では2段目の＜を非表示に戻す
     document.getElementById('btnBack').style.display = 'none';
+    // トップ画面ならカード切替ボタン（重なったカード）を再表示
+    if (currentScreen === 'brand') {
+      const tmBtn = document.getElementById('btnTopMode');
+      if (tmBtn) { tmBtn.style.display = 'flex'; updateTopModeIcon(); }
+    }
   } else if (currentScreen === 'products' || currentScreen === 'tagProducts') {
     // 商品一覧画面では中央の件数バッジは使わない（タイトルに件数を含めるため）
     document.getElementById('btnSearch').style.display = 'flex';
@@ -6801,7 +7258,7 @@ function closeSearchMode() {
   // 検索開始画面フラグをリセット
   searchOpenedAtDetail = false;
 
-  // 検索バー背景色を解除（クエリがクリアされたので無色に戻る）
+  // 検索チップ背景色を解除（クエリがクリアされたので無色に戻る）
   updateSearchBarColor();
 
   // 検索結果を解除して再描画（ハイライトをクリア）
@@ -6816,38 +7273,124 @@ function closeSearchMode() {
   }
 }
 
-// --- 検索入力時の処理（現在の画面に応じて再描画） ---
-function onSearch() {
-  const q = document.getElementById('searchInput').value;
-  document.getElementById('searchClear').classList.toggle('show', q.length > 0);
-
-  if (currentTab === 'card') {
-    if (currentScreen === 'brand') renderBrands();
-    else if (currentScreen === 'products') renderProducts();
-    else if (currentScreen === 'tagProducts') renderTagProducts();
-    else if (currentScreen === 'detail') {
-      renderDetail();
-      updateDetailHitCount();
-    }
+// --- チップの✕ボタン：検索モードを解除 ---
+// 戻るボタンの履歴と整合を取るため、popstate側で解除できるケースはhistory.back()に委譲する
+function closeSearchByX() {
+  const isListScreen = currentScreen === 'brand' || currentScreen === 'products' || currentScreen === 'tagProducts' || currentScreen === 'memo';
+  if (isListScreen || searchOpenedAtDetail) {
+    // popstateハンドラがcloseSearchModeを呼び、検索開始時に積んだ履歴も消費される
+    history.back();
   } else {
-    if (currentScreen === 'memo') renderMemos();
-    else if (currentScreen === 'memoDetail') {
-      renderMemoDetail();
-      updateDetailHitCount();
-    }
+    // 一覧画面発の検索を詳細画面で解除：画面はそのままで検索だけ解除
+    // （検索開始時の履歴エントリは、次の戻る操作で1ステップとして吸収される）
+    closeSearchMode();
+  }
+}
+
+
+/* ── ハイライト送り（メモ詳細画面のみ） ── */
+
+// --- ハイライト送りの状態 ---
+let memoNavMarks = [];  // メモ詳細内の全markタグ要素（出現順）
+let memoNavIdx = -1;    // 現在のマッチ位置（-1 = 未選択：全マッチ薄ピンクのまま）
+
+// --- ハイライト送りを初期化（renderMemoDetailの末尾から呼ばれる） ---
+function initMemoSearchNav() {
+  memoNavMarks = [];
+  memoNavIdx = -1;
+  const query = document.getElementById('searchInput').value.trim();
+  if (!query || currentScreen !== 'memoDetail') return;
+  // メモ詳細内のmark要素を出現順に配列化（タイトル・本文の両方を含む）
+  memoNavMarks = Array.from(document.querySelectorAll('#memoDetailBody mark.hl'));
+  updateMemoNavCount();
+}
+
+// --- 件数表示を更新（未選択時「N件」、送り中「M/N件」） ---
+function updateMemoNavCount() {
+  const el = document.getElementById('searchTotalCount');
+  if (memoNavIdx === -1) {
+    el.textContent = memoNavMarks.length + '件';
+  } else {
+    el.textContent = (memoNavIdx + 1) + '/' + memoNavMarks.length + '件';
+  }
+  // ヒット0件なら送りボタンをグレーアウト
+  const dis = memoNavMarks.length === 0;
+  document.getElementById('btnNavPrev').classList.toggle('disabled', dis);
+  document.getElementById('btnNavNext').classList.toggle('disabled', dis);
+}
+
+// --- ハイライト送り（dir: 1=次へ↓ / -1=前へ↑） ---
+let memoNavScrollAnim = null;  // スクロールアニメーションの実行中フラグ（連打時に前の動きを中断する用）
+
+function memoNavJump(dir) {
+  if (!memoNavMarks.length) return;
+  if (memoNavIdx === -1) {
+    // 最初の操作：↓なら1件目、↑なら最後の1件へ
+    memoNavIdx = dir > 0 ? 0 : memoNavMarks.length - 1;
+  } else {
+    // 末尾↓で先頭へ、先頭↑で末尾へループ
+    memoNavIdx = (memoNavIdx + dir + memoNavMarks.length) % memoNavMarks.length;
   }
 
-  // 検索バー背景色を更新（入力有無と画面に応じて）
-  updateSearchBarColor();
+  // 現在マッチだけ濃いピンクに（他は薄ピンクのまま）
+  memoNavMarks.forEach((m, i) => m.classList.toggle('hl-cur', i === memoNavIdx));
+
+  // 現在マッチが画面中央に来る位置を計算し、高速スクロールアニメーションで移動
+  const mainArea = document.getElementById('mainArea');
+  const mark = memoNavMarks[memoNavIdx];
+  const markRect = mark.getBoundingClientRect();
+  const areaRect = mainArea.getBoundingClientRect();
+  const target = mainArea.scrollTop + markRect.top - areaRect.top - areaRect.height / 2 + markRect.height / 2;
+  animateScrollTo(mainArea, target);
+
+  updateMemoNavCount();
 }
 
-// --- 検索欄をクリア ---
-function clearSearch() {
-  document.getElementById('searchInput').value = '';
-  document.getElementById('searchClear').classList.remove('show');
-  document.getElementById('searchTotalCount').textContent = '';
-  onSearch();
+// --- スクロールアニメーション（約0.3秒・減速イージング） ---
+function animateScrollTo(container, target, duration = 300) {
+  // 実行中のアニメーションがあれば中断（↓↑連打時は新しい移動を優先）
+  if (memoNavScrollAnim) cancelAnimationFrame(memoNavScrollAnim);
+
+  // スクロール可能範囲内に収める
+  const maxScroll = container.scrollHeight - container.clientHeight;
+  target = Math.max(0, Math.min(target, maxScroll));
+
+  const start = container.scrollTop;
+  const dist = target - start;
+  if (Math.abs(dist) < 1) return;  // ほぼ移動なしならスキップ
+
+  const t0 = performance.now();
+  const ease = (t) => 1 - Math.pow(1 - t, 3);  // easeOutCubic（最初速く、最後ゆっくり）
+
+  const step = (now) => {
+    const p = Math.min(1, (now - t0) / duration);
+    container.scrollTop = start + dist * ease(p);
+    if (p < 1) {
+      memoNavScrollAnim = requestAnimationFrame(step);
+    } else {
+      memoNavScrollAnim = null;
+    }
+  };
+  memoNavScrollAnim = requestAnimationFrame(step);
 }
+
+
+/* ── 検索モーダルのイベント登録 ── */
+(function () {
+  // Enterキーで検索実行
+  document.getElementById('smIn').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      execSearchFromModal();
+    }
+  });
+  // 背景タップでモーダルを閉じる
+  document.getElementById('searchModal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+      closeSearchModal();
+    }
+  });
+})();
 
 
 /* ══════════════════════════════════════════
@@ -8280,6 +8823,15 @@ async function onAppHiding() {
   if (savedSort?.value) {
     currentSort = savedSort.value;
   }
+
+  // 前回保存したトップ画面アイテム表示のソート状態を復元
+  const savedItemSort = await dbGet('meta', 'topItemSort');
+  if (savedItemSort?.value) {
+    currentTopItemSort = savedItemSort.value;
+  }
+
+  // 検索履歴を復元（最大5件・IndexedDBに永続化）
+  await loadSearchHistory();
 
   // --- キーボード表示時のビューポート調整 ---
   // interactive-widget=resizes-content により、キーボード表示時に
