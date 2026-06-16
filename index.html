@@ -1279,6 +1279,14 @@ mark.hl.hl-cur {
 .detail-body { padding: 16px; }
 .detail-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
 .detail-brand { font-size: 13px; color: var(--text-light); margin-bottom: 12px; }
+/* 詳細画面のブランド名をタップできるリンクにする */
+.detail-brand-link {
+  color: var(--primary-dark);
+  cursor: pointer;
+  display: inline-block;
+  padding: 2px 0;        /* 指でタップしやすいよう少し余白をとる */
+}
+.detail-brand-link:active { opacity: 0.6; }   /* タップ時の反応 */
 
 /* --- メタ情報タグ（カテゴリ・容量・価格・購入時期） --- */
 .detail-meta {
@@ -1290,6 +1298,13 @@ mark.hl.hl-cur {
   padding: 3px 10px; border-radius: 5px;
   background: var(--primary-light); color: var(--primary-dark);
 }
+/* タップでそのカテゴリの絞り込みに飛べるカテゴリチップ */
+.detail-cat-link {
+  cursor: pointer;
+  border: 1px solid var(--primary-pale);
+  padding: 2px 9px;   /* 枠線1px分を引いて、リンクでないチップと外寸を揃える */
+}
+.detail-cat-link:active { opacity: 0.55; }   /* タップ時の反応 */
 
 /* --- セクション（成分・メモなどの各ブロック） --- */
 .detail-section { margin-bottom: 20px; }
@@ -1336,6 +1351,9 @@ mark.hl.hl-cur {
   content: "#";
   margin-right: 2px;
 }
+/* タップでそのタグのフォルダに飛べるタグチップ（枠付きのピル型なので見た目は既存のまま、反応だけ追加） */
+.detail-tag-chip-link { cursor: pointer; }
+.detail-tag-chip-link:active { opacity: 0.55; }
 
 </style>
 
@@ -5437,6 +5455,50 @@ async function navigateDetailImage(direction) {
   updateDetailImage(p);
 }
 
+// --- 詳細画面のブランド名タップ → そのブランドの商品一覧へ（A案） ---
+//   中身は openBrand() とほぼ同じだが、currentTagId をあえてリセットしない点だけが違う。
+//   理由：タグフォルダ → 詳細 → ブランド一覧 とたどった場合、戻る途中で
+//   タグフォルダ画面を再表示する際に currentTagId（見ていたタグの記憶）が必要になる。
+//   openBrand() はそれを null にしてしまうため、タグ経由のときだけ戻り先が空になっていた。
+//   各画面は currentScreen でタグ用・ブランド用を判定しているので、currentTagId と
+//   currentBrandId の両方が残っていても表示が混ざることはない。
+//   showScreen('products') で「今いる詳細画面」が履歴に積まれるため、戻るボタンを押すと
+//   ユーザーが実際にたどった道筋どおりに戻れる。
+function goToBrandFromDetail(brandId) {
+  if (!brandId) return;
+  buildFolderNavList('brand', brandId);
+  currentBrandId = brandId;
+  // currentTagId はここでは消さない（上記コメント参照）
+  showScreen('products');
+}
+
+// --- 詳細画面のタグ名タップ → そのタグのフォルダ（タグ商品一覧）へ ---
+//   openTag() とほぼ同じだが、currentBrandId をあえて消さない点だけが違う。
+//   理由はブランド名リンクと同じ：ブランドフォルダ → 詳細 → タグ一覧 とたどった場合、
+//   戻る途中でブランドフォルダ画面を再表示する際に currentBrandId が必要になるため。
+//   各画面は currentScreen でタグ用・ブランド用を判定しているので、両方の記憶が
+//   残っていても表示が混ざることはない。
+function goToTagFromDetail(tagId) {
+  if (!tagId) return;
+  buildFolderNavList('tag', tagId);
+  currentTagId = tagId;
+  // currentBrandId はここでは消さない
+  showScreen('tagProducts');
+}
+
+// --- 詳細画面のカテゴリ名タップ → そのカテゴリで絞り込んだトップ画面へ ---
+//   カテゴリはフォルダではなく「絞り込み（フィルター）」なので、フォルダのように
+//   道筋を引き返すのではなく、トップ画面に移動して既存の絞り込み機構を適用する。
+//   戻る挙動はフィルター標準どおり（戻る＝絞り込み解除してトップ、もう一度でアプリ終了確認）。
+//   そのため screenHistory はリセットし、トップを起点にしておく。
+function goToCategoryFromDetail(encodedName) {
+  if (!encodedName) return;
+  const categoryName = decodeURIComponent(encodedName);
+  screenHistory = [];                 // 戻りトレイルをリセット（カテゴリはトップ起点）
+  showScreen('brand', false);         // トップを素の状態で表示（前進扱いにはしない）
+  applyCategoryFilter(categoryName);  // 既存の絞り込み機構に乗せる（戻る処理も既存どおり）
+}
+
 // --- 商品詳細画面を描画 ---
 async function renderDetail() {
   await loadTags(); // タグ情報を最新にする
@@ -5471,11 +5533,19 @@ async function renderDetail() {
   const priceText = p.price ? `¥${p.price}` : '';
 
   let html = `<div class="detail-title">${escHL(p.name, rawQuery)}</div>`;
-  html += `<div class="detail-brand">${brand ? escHL(brand.name, rawQuery) : ''}</div>`;
+  // ブランドがある時はタップでそのブランドの一覧へ飛べるリンクにする（未分類は従来通り何も出さない）
+  if (brand) {
+    html += `<div class="detail-brand"><span class="detail-brand-link" onclick="goToBrandFromDetail('${brand.id}')">${escHL(brand.name, rawQuery)}</span></div>`;
+  } else {
+    html += `<div class="detail-brand"></div>`;
+  }
 
   html += `<div class="detail-meta">`;
-  if (p.categoryMakeup) html += `<span class="detail-tag">${escHL(p.categoryMakeup, rawQuery)}</span>`;
-  if (p.categorySkincare) html += `<span class="detail-tag">${escHL(p.categorySkincare, rawQuery)}</span>`;
+  // カテゴリのチップはタップでそのカテゴリ絞り込みに飛べるリンクにする。
+  // カテゴリ名はユーザー入力（記号を含む可能性）なので、属性に安全に埋め込めるよう
+  // encodeURIComponent で包み、シングルクォートも明示的に退避させる。
+  if (p.categoryMakeup) html += `<span class="detail-tag detail-cat-link" onclick="goToCategoryFromDetail('${encodeURIComponent(p.categoryMakeup).replace(/'/g, '%27')}')">${escHL(p.categoryMakeup, rawQuery)}</span>`;
+  if (p.categorySkincare) html += `<span class="detail-tag detail-cat-link" onclick="goToCategoryFromDetail('${encodeURIComponent(p.categorySkincare).replace(/'/g, '%27')}')">${escHL(p.categorySkincare, rawQuery)}</span>`;
   if (p.volume) html += `<span class="detail-tag">${escHL(p.volume, rawQuery)}</span>`;
   if (priceText) html += `<span class="detail-tag">${priceText}</span>`;
   if (p.purchaseDate) html += `<span class="detail-tag">${esc(p.purchaseDate)}</span>`;
@@ -5489,7 +5559,7 @@ async function renderDetail() {
     if (tagNames.length > 0) {
       html += `<div class="detail-tag-chips">`;
       tagNames.forEach(t => {
-        html += `<span class="detail-tag-chip">${escHL(t.name, rawQuery)}</span>`;
+        html += `<span class="detail-tag-chip detail-tag-chip-link" onclick="goToTagFromDetail('${t.id}')">${escHL(t.name, rawQuery)}</span>`;
       });
       html += `</div>`;
     }
