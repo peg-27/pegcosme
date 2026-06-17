@@ -2931,7 +2931,7 @@ function showScreen(name, pushHistory = true) {
       // トップ表示モード切替ボタン（フォルダ⇔アイテム）を表示
       if (topModeBtn) topModeBtn.style.display = 'flex';
       // リスト⇔グリッド切替ボタンはアイテム表示モードの時だけ表示
-      if (viewModeBtn) viewModeBtn.style.display = (currentTopMode === 'item') ? 'flex' : 'none';
+      if (viewModeBtn) viewModeBtn.style.display = (currentTopMode === 'item' || currentCategoryFilter) ? 'flex' : 'none';
       updateTopModeIcon();
       totalCount.style.display = 'block';
       // 中央バッジを使うので、タイトル側に余白を確保
@@ -3663,6 +3663,16 @@ function applyCategoryFilter(categoryName) {
     filterBar.classList.remove('active');
   }
 
+  // トップ画面でカテゴリフィルター中はカードが直接並ぶので、
+  // グリッド切替ボタンを表示する（解除時はアイテム表示モードでなければ非表示に戻す）
+  if (currentScreen === 'brand') {
+    const viewModeBtn = document.getElementById('btnViewMode');
+    if (viewModeBtn) {
+      viewModeBtn.style.display = (currentTopMode === 'item' || currentCategoryFilter) ? 'flex' : 'none';
+    }
+    updateViewModeIcon();
+  }
+
   // 現在の画面を再描画
   if (currentScreen === 'brand') renderBrands();
   else if (currentScreen === 'products') renderProducts();
@@ -3753,7 +3763,7 @@ function toggleTopMode() {
   localStorage.setItem('pegCosmeTopMode', currentTopMode);
   // リスト⇔グリッド切替ボタンはアイテム表示モードの時だけ表示
   const viewModeBtn = document.getElementById('btnViewMode');
-  if (viewModeBtn) viewModeBtn.style.display = (currentTopMode === 'item') ? 'flex' : 'none';
+  if (viewModeBtn) viewModeBtn.style.display = (currentTopMode === 'item' || currentCategoryFilter) ? 'flex' : 'none';
   updateTopModeIcon();
   renderBrands();
 }
@@ -4419,7 +4429,7 @@ function applyTopViewMode() {
   if (list) {
     // 検索モード中も brandList にカードが並ぶので、グリッド切替を効かせる
     const inSearch = document.querySelector('.header').classList.contains('search-mode');
-    const gridEligible = (currentTopMode === 'item') || inSearch;
+    const gridEligible = (currentTopMode === 'item') || currentCategoryFilter || inSearch;
     if (gridEligible && currentTopViewMode === 'grid') {
       list.classList.add('grid-view');
     } else {
