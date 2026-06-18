@@ -1451,12 +1451,16 @@ mark.hl.hl-cur {
   overflow: hidden;
   position: relative;
   flex-shrink: 0;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 .form-image-slot.has-image {
   border: 1px solid var(--border-light);
 }
 .form-image-slot img {
   width: 100%; height: 100%; object-fit: cover;
+  pointer-events: none;
 }
 .form-image-slot .form-image-remove {
   position: absolute; top: 4px; right: 4px;
@@ -1488,6 +1492,20 @@ mark.hl.hl-cur {
 }
 .form-image-add span {
   font-size: 11px; color: var(--text-lighter);
+}
+
+/* --- 画像タイルのドラッグ並べ替え --- */
+.form-image-slot.has-image { touch-action: pan-y; }
+.form-image-slot.img-dragging {
+  opacity: 0.92;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+}
+.form-image-placeholder {
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-sm);
+  border: 2px dashed var(--primary-pale);
+  background: var(--primary-lighter);
+  flex-shrink: 0;
 }
 
 /* --- 成分整形ボタン --- */
@@ -1727,7 +1745,7 @@ mark.hl.hl-cur {
     <div class="form-group">
       <label class="form-label">商品画像（3枚まで）</label>
       <div class="form-image-grid" id="formImageGrid"></div>
-      <input type="file" id="imageInput" accept="image/*" style="display:none" onchange="onImageSelected(event)">
+      <input type="file" id="imageInput" accept="image/*" multiple style="display:none" onchange="onImageSelected(event)">
     </div>
     <!-- ブランド選択 -->
     <div class="form-group">
@@ -6376,8 +6394,13 @@ function renderFormImageGrid() {
 
   formImages.forEach((blob, i) => {
     const url = URL.createObjectURL(blob);
-    html += `<div class="form-image-slot has-image">
-      <img src="${url}" alt="" onload="URL.revokeObjectURL(this.src)">
+    html += `<div class="form-image-slot has-image" data-img-index="${i}"
+        oncontextmenu="return false"
+        ontouchstart="onImgTouchStart(event)"
+        ontouchmove="onImgTouchMove(event)"
+        ontouchend="onImgTouchEnd(event)"
+        ontouchcancel="onImgTouchEnd(event)">
+      <img src="${url}" alt="" draggable="false" onload="URL.revokeObjectURL(this.src)">
       <button class="form-image-remove" onclick="removeFormImage(event, ${i})">${xSvg}</button>
     </div>`;
   });
@@ -6398,42 +6421,66 @@ function pickImage() {
   document.getElementById('imageInput').click();
 }
 
-// --- 画像ファイル選択後の処理（リサイズ・圧縮してBlobに変換） ---
+// --- 画像ファイル選択後の処理（複数選択対応・リサイズ・圧縮してBlobに変換） ---
 function onImageSelected(e) {
-  const file = e.target.files[0];
-  if (!file) return;
+  const files = Array.from(e.target.files);
   e.target.value = '';
+  if (files.length === 0) return;
 
-  const img = new Image();
-  const objectUrl = URL.createObjectURL(file);
-  img.onload = () => {
-    URL.revokeObjectURL(objectUrl);
-    const MAX = 800;
-    const w = img.naturalWidth;
-    const h = img.naturalHeight;
+  // 残り枠（最大3枚）を計算。はみ出した分は受け付けない
+  const remaining = 3 - formImages.length;
+  if (remaining <= 0) return;
 
-    // 長辺が800px以下ならリサイズせずそのままBlobに変換
-    if (w <= MAX && h <= MAX) {
-      formImages.push(file);
-      formImagesDirty = true;
-      renderFormImageGrid();
-      return;
-    }
+  let targets = files;
+  if (files.length > remaining) {
+    targets = files.slice(0, remaining);
+    toast(`画像は3枚までです。先頭${remaining}枚を追加しました`);
+  }
 
-    // 長辺が800px超えならcanvasでリサイズしてJPEG圧縮
-    const scale = MAX / Math.max(w, h);
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(w * scale);
-    canvas.height = Math.round(h * scale);
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob((blob) => {
-      formImages.push(blob);
-      formImagesDirty = true;
-      renderFormImageGrid();
-    }, 'image/jpeg', 0.85);
-  };
-  img.src = objectUrl;
+  // 各ファイルを並行してリサイズ/圧縮し、選んだ順序を保ったまま受け取る
+  Promise.all(targets.map(processImageFile)).then((blobs) => {
+    const valid = blobs.filter(Boolean); // 読み込みに失敗したものは除外
+    if (valid.length === 0) return;
+    formImages.push(...valid);
+    formImagesDirty = true;
+    renderFormImageGrid();
+  });
+}
+
+// --- 画像1枚をリサイズ/圧縮してBlobを返す（失敗時はnull） ---
+function processImageFile(file) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const MAX = 800;
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+
+      // 長辺が800px以下ならリサイズせずそのまま使う
+      if (w <= MAX && h <= MAX) {
+        resolve(file);
+        return;
+      }
+
+      // 長辺が800px超えならcanvasでリサイズしてJPEG圧縮
+      const scale = MAX / Math.max(w, h);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        resolve(blob || file); // 圧縮に失敗した場合は元ファイルで代替
+      }, 'image/jpeg', 0.85);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(null); // 読み込み失敗。nullを返し、他の画像の処理は続行する
+    };
+    img.src = objectUrl;
+  });
 }
 
 // --- 画像を個別に削除 ---
@@ -6442,6 +6489,139 @@ function removeFormImage(e, index) {
   formImages.splice(index, 1);
   formImagesDirty = true;
   renderFormImageGrid();
+}
+
+// ══════════════════════════════════════════
+// 画像タイルのドラッグ並べ替え（フォーム画面・横並び）
+// ══════════════════════════════════════════
+let imgDragState = null;       // ドラッグ開始後の状態を保持
+let imgLongPressTimer = null;  // 長押し判定タイマー
+let imgTouchStartPos = null;   // touchstart時の指の座標
+const IMG_LONGPRESS_MS = 350;  // この時間押し続けたらドラッグ開始
+const IMG_MOVE_CANCEL = 10;    // ドラッグ開始前にこのpx以上動いたら長押し取り消し
+
+// --- 画像タイルに触れた（長押し成立でドラッグ開始を予約） ---
+function onImgTouchStart(e) {
+  // 削除ボタンを触ったときは並べ替えを始めない
+  if (e.target.closest('.form-image-remove')) return;
+  // 画像が1枚以下なら並べ替え不要
+  if (formImages.length <= 1) return;
+
+  const slot = e.currentTarget;
+  const touch = e.touches[0];
+  imgTouchStartPos = { x: touch.clientX, y: touch.clientY };
+
+  clearTimeout(imgLongPressTimer);
+  imgLongPressTimer = setTimeout(() => {
+    beginImgDrag(slot, imgTouchStartPos);
+  }, IMG_LONGPRESS_MS);
+}
+
+// --- ドラッグ開始（長押し成立時に呼ばれる） ---
+function beginImgDrag(slot, startPos) {
+  const rect = slot.getBoundingClientRect();
+
+  // 元の場所を保持する空き枠（プレースホルダー）
+  const placeholder = document.createElement('div');
+  placeholder.className = 'form-image-placeholder';
+  placeholder.style.width = rect.width + 'px';
+  placeholder.style.height = rect.height + 'px';
+  slot.parentNode.insertBefore(placeholder, slot);
+
+  // タイルを浮かせて指に追従させる
+  slot.classList.add('img-dragging');
+  slot.style.position = 'fixed';
+  slot.style.left = rect.left + 'px';
+  slot.style.top = rect.top + 'px';
+  slot.style.width = rect.width + 'px';
+  slot.style.height = rect.height + 'px';
+  slot.style.zIndex = '1000';
+
+  imgDragState = {
+    slot,
+    placeholder,
+    offsetX: startPos.x - rect.left,
+    offsetY: startPos.y - rect.top
+  };
+
+  // 「つかんだ」合図に軽く振動（対応端末のみ）
+  if (navigator.vibrate) navigator.vibrate(15);
+}
+
+// --- 指の移動 ---
+function onImgTouchMove(e) {
+  const touch = e.touches[0];
+
+  // まだドラッグ開始前：指が大きく動いたら長押しを取り消す（＝通常のスクロールに任せる）
+  if (!imgDragState) {
+    if (imgTouchStartPos) {
+      const dx = touch.clientX - imgTouchStartPos.x;
+      const dy = touch.clientY - imgTouchStartPos.y;
+      if (Math.hypot(dx, dy) > IMG_MOVE_CANCEL) {
+        clearTimeout(imgLongPressTimer);
+      }
+    }
+    return;
+  }
+
+  // ドラッグ中：ブラウザのスクロールを止めて指に追従させる
+  e.preventDefault();
+  imgDragState.slot.style.left = (touch.clientX - imgDragState.offsetX) + 'px';
+  imgDragState.slot.style.top = (touch.clientY - imgDragState.offsetY) + 'px';
+
+  // 横並びなので、指のX座標と各タイルの中心を比べて挿入先を決める
+  const grid = document.getElementById('formImageGrid');
+  const addBtn = grid.querySelector('.form-image-add');
+  const others = Array.from(grid.querySelectorAll('.form-image-slot.has-image'))
+    .filter(el => el !== imgDragState.slot);
+
+  let inserted = false;
+  for (const el of others) {
+    const r = el.getBoundingClientRect();
+    const midX = (r.left + r.right) / 2;
+    if (touch.clientX < midX) {
+      grid.insertBefore(imgDragState.placeholder, el);
+      inserted = true;
+      break;
+    }
+  }
+  if (!inserted) {
+    // どのタイルより右 → 末尾（追加ボタンがあればその前）に置く
+    if (addBtn) grid.insertBefore(imgDragState.placeholder, addBtn);
+    else grid.appendChild(imgDragState.placeholder);
+  }
+}
+
+// --- 指を離した（ドラッグ確定） ---
+function onImgTouchEnd(e) {
+  clearTimeout(imgLongPressTimer);
+  imgTouchStartPos = null;
+  if (!imgDragState) return;
+
+  const grid = document.getElementById('formImageGrid');
+  const { slot, placeholder } = imgDragState;
+
+  // プレースホルダーの位置にタイルを戻す
+  grid.insertBefore(slot, placeholder);
+  placeholder.remove();
+
+  // 浮かせていたスタイルを解除
+  slot.classList.remove('img-dragging');
+  slot.style.position = '';
+  slot.style.left = '';
+  slot.style.top = '';
+  slot.style.width = '';
+  slot.style.height = '';
+  slot.style.zIndex = '';
+
+  // 画面上の新しい並び順から formImages を作り直す
+  const newOrder = Array.from(grid.querySelectorAll('.form-image-slot.has-image'))
+    .map(el => parseInt(el.dataset.imgIndex, 10));
+  formImages = newOrder.map(i => formImages[i]);
+  formImagesDirty = true;
+
+  imgDragState = null;
+  renderFormImageGrid(); // data-img-index を振り直すため再描画
 }
 
 // --- 編集前の商品と、画像以外のフォーム内容が一致するか判定 ---
