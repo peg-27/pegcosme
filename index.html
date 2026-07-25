@@ -22,6 +22,7 @@
      #SEARCH ........ 検索バー
      #BRAND ......... ブランド一覧画面・空状態・FAB
      #PRODUCT ....... 商品一覧画面
+     #HISTORY ....... 閲覧履歴画面
      #DETAIL ........ 商品詳細画面
      #FORM .......... 商品登録・編集フォーム
      #MEMO .......... メモタブ（一覧・詳細・フォーム）
@@ -41,6 +42,7 @@
      #BRAND_OPS_JS ..... フォルダ操作（開く・長押し・削除）
      #BRAND_ADD_JS ..... ブランド追加
      #PRODUCT_JS ....... 商品一覧ロジック
+     #HISTORY_JS ....... 閲覧履歴ロジック
      #REORDER_JS ....... 並べ替えモードロジック
      #DRAGDROP_JS ...... ドラッグ&ドロップ処理（並べ替えモード用）
      #DETAIL_JS ........ 商品詳細ロジック
@@ -478,6 +480,10 @@ img { display: block; max-width: 100%; }
   <!-- トップ表示モード切替ボタン（フォルダ⇔アイテム）：通常モードのトップ画面のみ、2段目左端に固定表示 -->
   <button class="header-btn" id="btnTopMode" onclick="toggleTopMode()" title="フォルダ/アイテム切替" style="display:none">
     <svg viewBox="0 0 24 24"><rect x="8" y="3" width="12" height="12" rx="2" fill="none"/><rect x="4" y="9" width="12" height="12" rx="2" fill="var(--primary)"/></svg>
+  </button>
+  <!-- 閲覧履歴ボタン：通常モードのトップ画面（カードタブ）のみ、表示モード切替ボタンの右隣に表示 -->
+  <button class="header-btn" id="btnHistory" onclick="openHistory()" title="閲覧履歴" style="display:none">
+    <svg viewBox="0 0 24 24"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
   </button>
   <div class="header-title" id="headerTitle"></div>
   <!-- 件数バッジ（登録件数／フィルター件数共用） -->
@@ -1155,6 +1161,20 @@ mark.hl.hl-cur {
   <div class="empty-state" id="productEmpty">
     <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="12" y2="15"/></svg>
     <p>商品が登録されていません<br>＋ボタンから追加してください</p>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     #HISTORY 閲覧履歴画面（HTML）
+     ══════════════════════════════════════════ -->
+
+<!-- 閲覧履歴画面：グリッド表示固定（リスト表示への切替はなし） -->
+<div class="screen" id="screenViewHistory">
+  <div class="product-list grid-view" id="historyList"></div>
+  <div class="empty-state" id="historyEmpty">
+    <svg viewBox="0 0 24 24"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+    <p>まだ閲覧履歴がありません<br>カードを開くとここに残ります</p>
   </div>
 </div>
 
@@ -2207,6 +2227,107 @@ mark.hl.hl-cur {
   box-sizing: border-box;
 }
 
+/* --- タグ管理画面 --- */
+.tag-manage-screen {
+  padding: 16px;
+}
+.tag-manage-hint {
+  font-size: 12px;
+  color: var(--text-lighter);
+  line-height: 1.6;
+  margin-bottom: 12px;
+  padding: 0 2px;
+}
+.tag-manage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.tag-manage-card {
+  display: flex;
+  align-items: center;
+  background: var(--card-bg);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  box-shadow: var(--shadow);
+  gap: 6px;
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.tag-manage-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tag-manage-count {
+  font-size: 12px;
+  color: var(--text-lighter);
+  white-space: nowrap;
+}
+/* フォルダ表示のオン/オフ スイッチ */
+.tag-folder-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--primary-light);
+  border: 1px solid var(--primary-pale);
+  transition: background .15s, border-color .15s;
+  cursor: pointer;
+}
+.tag-folder-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  transition: transform .15s;
+}
+.tag-folder-switch.on {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.tag-folder-switch.on::after {
+  transform: translateX(16px);
+}
+.tag-manage-card-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.tag-manage-card-btn:active { background: var(--primary-lighter); }
+.tag-manage-card-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--text-light);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tag-manage-card-btn.delete svg { stroke: var(--accent); }
+.tag-manage-empty {
+  font-size: 13px;
+  color: var(--text-lighter);
+  padding: 12px 0;
+  text-align: center;
+}
+
 </style>
 
 <!-- ----- #SETTINGS HTML ----- -->
@@ -2221,7 +2342,13 @@ mark.hl.hl-cur {
 <!-- フォルダ管理画面（設定 → フォルダ管理で遷移） -->
 <div class="screen folder-manage-screen" id="screenFolderManage">
   <div class="folder-manage-list" id="folderManageList"></div>
-  <button class="cat-add-btn folder-add-tag-btn" onclick="showAddTagModal()">＋ タグを追加</button>
+</div>
+
+<!-- タグ管理画面（設定 → タグ管理で遷移） -->
+<div class="screen tag-manage-screen" id="screenTagManage">
+  <div class="tag-manage-hint">スイッチをオフにすると、トップ画面のフォルダ一覧から外れます。タグ自体は残り、検索やフィルターでは引き続き使えます。</div>
+  <div class="tag-manage-list" id="tagManageList"></div>
+  <button class="cat-add-btn" onclick="showAddTagModal()">＋ タグを追加</button>
 </div>
 
 
@@ -2433,6 +2560,11 @@ mark.hl.hl-cur {
     <span class="menu-label">フォルダ管理</span>
     <svg class="menu-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
   </button>
+  <button class="settings-menu-item" onclick="openTagManage()">
+    <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+    <span class="menu-label">タグ管理</span>
+    <svg class="menu-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
   <button class="settings-menu-item" id="settingsMenuSort" onclick="onSortMenuClick()">
     <svg viewBox="0 0 24 24"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6l2 2 3-3"/><path d="M3 12l2 2 3-3"/><path d="M3 18l2 2 3-3"/></svg>
     <span class="menu-label">アイテムカードを並べ替える</span>
@@ -2589,7 +2721,7 @@ mark.hl.hl-cur {
    ══════════════════════════════════════════ */
 
 const DB_NAME = 'PEGCosmeDB';
-const DB_VERSION = 4;
+const DB_VERSION = 6;
 let db = null;
 
 // --- DB接続を開く（初回はストア作成も行う） ---
@@ -2640,6 +2772,14 @@ function openDB() {
         const ts = d.createObjectStore('tags', { keyPath: 'id' });
         ts.createIndex('name', 'name', { unique: true });
       }
+      // 閲覧履歴ストア（v6で追加）
+      //  キーを productId にしているため、同じカードを再度開くと put で上書きされ、
+      //  自動的に「最後に見た1件だけ」が残る（重複が並ばない）
+      //  形式: { productId, viewedAt }
+      if (!d.objectStoreNames.contains('viewHistory')) {
+        const hs = d.createObjectStore('viewHistory', { keyPath: 'productId' });
+        hs.createIndex('viewedAt', 'viewedAt', { unique: false });
+      }
 
       // v2→v3アップグレード：既存カテゴリにgroup付与
       if (e.oldVersion >= 2 && e.oldVersion < 3) {
@@ -2658,9 +2798,39 @@ function openDB() {
           }
         };
       }
+
+      // v4→v5アップグレード：既存タグに showAsFolder を付与（全て true = 表示オンで移行）
+      if (e.oldVersion >= 4 && e.oldVersion < 5) {
+        const tagStore = tx.objectStore('tags');
+        const tagCursorReq = tagStore.openCursor();
+        tagCursorReq.onsuccess = (ev) => {
+          const cursor = ev.target.result;
+          if (cursor) {
+            const tag = cursor.value;
+            if (tag.showAsFolder === undefined) {
+              tag.showAsFolder = true;
+              cursor.update(tag);
+            }
+            cursor.continue();
+          }
+        };
+      }
     };
-    req.onsuccess = (e) => { db = e.target.result; resolve(db); };
-    req.onerror = (e) => reject(e.target.error);
+    req.onsuccess = (e) => {
+      db = e.target.result;
+      // ※ index_6 で db.onversionchange による自動クローズを入れていたが、
+      //    複数タブで開けなくなった原因の候補なので index_9 で外した（切り分け中）
+      resolve(db);
+    };
+    req.onerror = (e) => {
+      const err = e.target.error;
+      alert('データベースを開けませんでした。\n' + (err ? err.name + ': ' + err.message : '原因不明'));
+      reject(err);
+    };
+    // 別のタブが古いバージョンでDBを開いたままだと、バージョン更新がここで止まる
+    req.onblocked = () => {
+      alert('データベースの更新が別のタブに妨げられています。\n他のタブで開いているPEGコスメをすべて閉じてから、この画面を再読み込みしてください。');
+    };
   });
 }
 
@@ -2744,6 +2914,50 @@ function dbClear(store) {
 
 // --- ユニークID生成（タイムスタンプ＋ランダム文字列） ---
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+
+/* ---------- 閲覧履歴（viewHistory ストア） ----------
+   ・同じカードは最後に見た1件だけを残す（キーが productId なので put で上書きされる）
+   ・保持件数の上限は VIEW_HISTORY_LIMIT 件（グリッド3列でちょうど収まる数）
+   ・バックアップの対象外（エクスポートは対象ストアを個別に列挙しているため自動的に除外）
+   ------------------------------------------------- */
+
+// --- 閲覧履歴の保持件数上限（グリッド3列 × 17段 = 51件） ---
+const VIEW_HISTORY_LIMIT = 51;
+
+// --- 閲覧履歴に記録（新しい順に並べ直し、上限を超えた古い分を削除） ---
+async function recordViewHistory(productId) {
+  if (!productId) return;
+  await dbPut('viewHistory', { productId, viewedAt: new Date().toISOString() });
+
+  // 上限を超えていたら、古いものから削除する
+  const all = await dbGetAll('viewHistory');
+  if (all.length <= VIEW_HISTORY_LIMIT) return;
+  all.sort((a, b) => (b.viewedAt || '').localeCompare(a.viewedAt || ''));
+  const over = all.slice(VIEW_HISTORY_LIMIT);
+  for (const h of over) {
+    await dbDelete('viewHistory', h.productId);
+  }
+}
+
+// --- 閲覧履歴を新しい順で取得（存在しない商品IDは除外して返す） ---
+async function getViewHistory() {
+  const all = await dbGetAll('viewHistory');
+  all.sort((a, b) => (b.viewedAt || '').localeCompare(a.viewedAt || ''));
+  // 読み込み済みの商品データがあれば再利用する（画像を含むため再取得は重い）
+  const products = (Array.isArray(allProducts) && allProducts.length > 0)
+    ? allProducts
+    : await dbGetAll('products');
+  const map = new Map(products.map(p => [p.id, p]));
+  return all
+    .filter(h => map.has(h.productId))
+    .map(h => ({ ...map.get(h.productId), viewedAt: h.viewedAt }));
+}
+
+// --- 閲覧履歴から1件削除 ---
+async function deleteViewHistory(productId) {
+  await dbDelete('viewHistory', productId);
+}
 
 // --- データ更新日時を記録（バックアップ警告の判定に使用） ---
 async function markDataUpdated() {
@@ -2831,6 +3045,7 @@ function getScrollKey(screenName) {
   if (screenName === 'products') return `products_${currentBrandId}`;
   if (screenName === 'tagProducts') return `tagProducts_${currentTagId}`;
   if (screenName === 'memo') return 'memo';
+  if (screenName === 'history') return 'history';
   return null;  // 一覧画面ではない場合はnull
 }
 
@@ -2918,6 +3133,7 @@ function showScreen(name, pushHistory = true) {
   const filterBtn = document.getElementById('btnFilter');
   const viewModeBtn = document.getElementById('btnViewMode');
   const topModeBtn = document.getElementById('btnTopMode');
+  const historyBtn = document.getElementById('btnHistory');
   const detailEditBtn = document.getElementById('btnDetailEdit');
   const detailDeleteBtn = document.getElementById('btnDetailDelete');
   const memoSaveBtn = document.getElementById('btnMemoSave');
@@ -2938,6 +3154,7 @@ function showScreen(name, pushHistory = true) {
   filterBtn.style.display = 'none';
   if (viewModeBtn) viewModeBtn.style.display = 'none';
   if (topModeBtn) topModeBtn.style.display = 'none';
+  if (historyBtn) historyBtn.style.display = 'none';
   detailEditBtn.style.display = 'none';
   detailDeleteBtn.style.display = 'none';
   memoSaveBtn.style.display = 'none';
@@ -2973,6 +3190,8 @@ function showScreen(name, pushHistory = true) {
       filterBtn.style.display = 'flex';
       // トップ表示モード切替ボタン（フォルダ⇔アイテム）を表示
       if (topModeBtn) topModeBtn.style.display = 'flex';
+      // 閲覧履歴ボタンもトップ画面のみ表示
+      if (historyBtn) historyBtn.style.display = 'flex';
       // リスト⇔グリッド切替ボタンはアイテム表示モードの時だけ表示
       if (viewModeBtn) viewModeBtn.style.display = (currentTopMode === 'item' || currentCategoryFilter) ? 'flex' : 'none';
       updateTopModeIcon();
@@ -3078,6 +3297,17 @@ function showScreen(name, pushHistory = true) {
       title.textContent = 'メモ詳細';
       renderMemoDetail();
       break;
+    case 'history':
+      document.getElementById('screenViewHistory').classList.add('active');
+      // ヘッダー2段目に＜ボタンを表示（トップ画面に戻る）
+      backBtn.style.display = 'flex';
+      // タブバーは非表示（カードタブ専用の画面なので切替させない）
+      tabBar.style.display = 'none';
+      fab.style.display = 'none';
+      // タイトルは renderHistory() 内で「閲覧履歴 (○件)」の形にセットする
+      title.textContent = '';
+      renderHistory();
+      break;
     case 'categoryManage':
       document.getElementById('screenCategoryManage').classList.add('active');
       backBtn.style.display = 'flex';
@@ -3098,6 +3328,15 @@ function showScreen(name, pushHistory = true) {
       document.getElementById('btnFolderManageCancel').style.display = 'none';
       document.getElementById('btnFolderManageConfirm').style.display = 'none';
       initFolderManage();
+      break;
+    case 'tagManage':
+      document.getElementById('screenTagManage').classList.add('active');
+      backBtn.style.display = 'flex';
+      tabBar.style.display = 'none';
+      fab.style.display = 'none';
+      settingsBtn.style.display = 'none';
+      title.textContent = 'タグ管理';
+      renderTagManageList();
       break;
   }
 
@@ -3949,8 +4188,9 @@ async function renderBrands() {
   // === 通常表示（フィルターなし・検索なし）：タグ＋ブランドフォルダ一覧 ===
   let brands = allBrands.slice();
 
-  // タグフォルダ：中身が1件以上あるタグだけ抽出
+  // タグフォルダ：中身が1件以上あり、かつ「フォルダとして表示」がオンのタグだけ抽出
   let tags = allTags.filter(t =>
+    t.showAsFolder !== false &&
     allProducts.some(p => Array.isArray(p.tagIds) && p.tagIds.includes(t.id))
   );
 
@@ -3979,14 +4219,18 @@ async function renderBrands() {
 
   // --- フォルダのソート ---
   if (currentSort === 'custom') {
-    const orderMap = new Map(
-      folderOrder.map((f, i) => [`${f.type}:${f.id}`, i])
+    // 並べ替え順：タグを先頭に名前順でまとめ、ブランドは手動並び（folderOrder）で並べる
+    const brandOrderMap = new Map(
+      folderOrder.filter(f => f.type === 'brand').map((f, i) => [f.id, i])
     );
     folders.sort((a, b) => {
-      const ka = `${a.type}:${a.id}`;
-      const kb = `${b.type}:${b.id}`;
-      const ai = orderMap.has(ka) ? orderMap.get(ka) : Infinity;
-      const bi = orderMap.has(kb) ? orderMap.get(kb) : Infinity;
+      // タグは常にブランドより前
+      if (a.type !== b.type) return a.type === 'tag' ? -1 : 1;
+      // タグ同士は名前順
+      if (a.type === 'tag') return a.name.localeCompare(b.name, 'ja');
+      // ブランド同士は手動並び順（未設定は末尾に名前順）
+      const ai = brandOrderMap.has(a.id) ? brandOrderMap.get(a.id) : Infinity;
+      const bi = brandOrderMap.has(b.id) ? brandOrderMap.get(b.id) : Infinity;
       if (ai === Infinity && bi === Infinity) {
         return a.name.localeCompare(b.name, 'ja');
       }
@@ -4752,6 +4996,8 @@ function openProduct(id) {
     productCards = document.querySelectorAll('#brandList .product-card');
   } else if (currentScreen === 'products' || currentScreen === 'tagProducts') {
     productCards = document.querySelectorAll('#productList .product-card');
+  } else if (currentScreen === 'history') {
+    productCards = document.querySelectorAll('#historyList .product-card');
   } else {
     productCards = [];
   }
@@ -4866,6 +5112,97 @@ async function moveToBrand(productId, brandId) {
   } else {
     renderBrands();
   }
+}
+
+
+// ══════════════════════════════════════════
+// #HISTORY_JS 閲覧履歴ロジック
+// ══════════════════════════════════════════
+
+// --- 閲覧履歴画面を開く（ヘッダーの履歴ボタンから呼ばれる） ---
+function openHistory() {
+  showScreen('history');
+}
+
+// --- 閲覧履歴を描画（新しい順・グリッド表示固定） ---
+async function renderHistory() {
+  await loadAllData();
+
+  const list = document.getElementById('historyList');
+  const empty = document.getElementById('historyEmpty');
+  const history = await getViewHistory();
+
+  // ヘッダータイトルに「閲覧履歴 (件数)」を表示
+  document.getElementById('headerTitle').innerHTML =
+    `閲覧履歴<span class="header-title-count">(${history.length}件)</span>`;
+
+  if (history.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'flex';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const thumbIcon = `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+  const brandMap = new Map(allBrands.map(b => [b.id, b.name]));
+
+  // カードのマークアップは商品一覧と共通（グリッド表示のCSSをそのまま使う）
+  const cardHtmlList = await Promise.all(history.map(async (p) => {
+    let thumbHtml;
+    if (p.images?.[0]) {
+      const url = URL.createObjectURL(p.images[0]);
+      thumbHtml = `<img src="${url}" alt="" onload="URL.revokeObjectURL(this.src)">`;
+    } else {
+      thumbHtml = thumbIcon;
+    }
+    const brandName = brandMap.get(p.brandId) || '';
+    const catParts = [p.categoryMakeup, p.categorySkincare].filter(Boolean);
+    const catText = catParts.join(' / ');
+    return `<div class="product-card" data-id="${p.id}"
+      onclick="openProduct('${p.id}')"
+      oncontextmenu="return false"
+      ontouchstart="startHistoryLongPress(event, '${p.id}')"
+      ontouchend="cancelLongPress()"
+      ontouchmove="cancelLongPress()">
+      <div class="product-thumb">${thumbHtml}</div>
+      <div class="product-info">
+        ${brandName ? `<div class="product-brand-label">${esc(brandName)}</div>` : ''}
+        <div class="product-name">${esc(p.name)}</div>
+        ${catText ? `<div class="product-category">${esc(catText)}</div>` : ''}
+      </div>
+    </div>`;
+  }));
+
+  list.innerHTML = cardHtmlList.join('');
+}
+
+// --- 履歴カードの長押し開始（既存の longPressTimer / cancelLongPress を流用） ---
+function startHistoryLongPress(e, productId) {
+  longPressTimer = setTimeout(() => {
+    longPressTimer = null;
+    showHistoryContextMenu(productId);
+  }, 500);
+}
+
+// --- 履歴カードの長押しメニュー（履歴からの削除のみ） ---
+function showHistoryContextMenu(productId) {
+  const p = allProducts.find(x => x.id === productId);
+  const name = p?.name ? esc(p.name) : 'このカード';
+  showModal({
+    title: '閲覧履歴から削除',
+    content: `「${name}」を閲覧履歴から削除しますか？<br>カード自体は削除されません。`,
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      {
+        text: '削除', cls: 'modal-danger', action: async () => {
+          closeModal();
+          await deleteViewHistory(productId);
+          toast('閲覧履歴から削除しました');
+          renderHistory();
+        }
+      }
+    ]
+  });
 }
 
 
@@ -5089,6 +5426,7 @@ function updateHeaderForSortMode() {
   const searchBtn = document.getElementById('btnSearch');
   const viewModeBtn = document.getElementById('btnViewMode');
   const topModeBtn = document.getElementById('btnTopMode');
+  const historyBtn = document.getElementById('btnHistory');
   const title = document.getElementById('headerTitle');
   const confirmBtn = document.getElementById('btnSortConfirm');
   const cancelBtn = document.getElementById('btnSortCancel');
@@ -5104,6 +5442,7 @@ function updateHeaderForSortMode() {
     searchBtn.style.display = 'none';
     viewModeBtn.style.display = 'none';
     if (topModeBtn) topModeBtn.style.display = 'none';
+    if (historyBtn) historyBtn.style.display = 'none';
     confirmBtn.style.display = 'inline-block';
     cancelBtn.style.display = 'inline-block';
     title.textContent = '並べ替え';
@@ -5131,6 +5470,10 @@ function updateHeaderForSortMode() {
     // トップ表示モード切替ボタンはトップ画面のみ表示
     if (topModeBtn) {
       topModeBtn.style.display = (currentScreen === 'brand') ? 'flex' : 'none';
+    }
+    // 閲覧履歴ボタンもトップ画面のみ表示に戻す
+    if (historyBtn) {
+      historyBtn.style.display = (currentScreen === 'brand') ? 'flex' : 'none';
     }
     // 並べ替え専用ボタンは HTML側でインラインに display:none が書かれている。
     // 空文字でクリアするとCSSルールに該当指定がなく表示されてしまうため、
@@ -5558,6 +5901,9 @@ async function renderDetail() {
   await loadTags(); // タグ情報を最新にする
   const p = await dbGet('products', currentProductId);
   if (!p) return;
+
+  // 閲覧履歴に記録（描画を待たせないよう非同期のまま走らせる）
+  recordViewHistory(currentProductId).catch(() => {});
   const rawQuery = document.getElementById('searchInput').value.trim();
 
   // ヘッダータイトルに商品名を表示（長い場合はCSSで自動省略される）
@@ -5733,6 +6079,9 @@ async function deleteProduct() {
   }
 
   await dbDelete('products', currentProductId);
+
+  // 閲覧履歴からも除外（残しても描画時に除外されるが、無駄なレコードを溜めないため）
+  await deleteViewHistory(currentProductId).catch(() => {});
   await markDataUpdated();
   closeModal();
   toast('商品を削除しました');
@@ -5872,6 +6221,7 @@ async function addTagFromForm() {
     name,
     order: maxOrder + 1,
     cardOrder: [],
+    showAsFolder: true,
     createdAt: new Date().toISOString()
   };
   await dbPut('tags', newTag);
@@ -6066,6 +6416,25 @@ function getBrandGroupKey(name) {
   return 'その他';
 }
 
+// --- 長音符「ー」の直前の音から母音を求める（五十音順ソート用） ---
+//   辞書の五十音順では、長音符は直前の音の母音に置き換えて並べるのが原則。
+//   例：ケー → ケエ ／ アール → アアル
+//   該当する母音が見つからない場合（「ン」の直後など）は空文字を返す。
+const CHOON_VOWEL_ROWS = {
+  'ア': 'アカサタナハマヤラワガザダバパァャヮ',
+  'イ': 'イキシチニヒミリヰギジヂビピィ',
+  'ウ': 'ウクスツヌフムユルグズヅブプヴゥュッ',
+  'エ': 'エケセテネヘメレヱゲゼデベペェヶ',
+  'オ': 'オコソトノホモヨロヲゴゾドボポォョ'
+};
+function choonVowel(prevChar) {
+  if (!prevChar) return '';
+  for (const v in CHOON_VOWEL_ROWS) {
+    if (CHOON_VOWEL_ROWS[v].indexOf(prevChar) !== -1) return v;
+  }
+  return '';
+}
+
 // --- ブランド名のグループ内ソートキー（記号→数字→アルファベット→五十音順） ---
 function getBrandSortKey(name) {
   if (!name) return '\uFFFF';
@@ -6090,11 +6459,17 @@ function getBrandSortKey(name) {
   }
 
   // ひらがな・カタカナ：カタカナに正規化して比較
+  //  ★長音符「ー」はそのままだと文字コード上すべてのカナより後ろに来てしまうため、
+  //    直前の音の母音に展開してから比較する（例：アールエムケー → アアルエムケエ）
   let normalized = '';
   for (const c of name) {
     const cc = c.charCodeAt(0);
     if (cc >= 0x3041 && cc <= 0x3096) {
+      // ひらがな → カタカナ
       normalized += String.fromCharCode(cc + 0x60);
+    } else if (c === 'ー' || c === 'ｰ') {
+      // 長音符 → 直前の音の母音（見つからない場合は無視）
+      normalized += choonVowel(normalized.slice(-1));
     } else {
       normalized += c;
     }
@@ -7477,7 +7852,7 @@ function execSearchFromModal() {
 }
 
 // --- 検索を実行（履歴更新→検索モードに入り再描画） ---
-function execSearch(q) {
+async function execSearch(q) {
   if (!q) return;
   closeSearchModal();
 
@@ -7501,22 +7876,41 @@ function execSearch(q) {
     updateSearchBarColor();
   }
 
-  rerenderForSearch();
+  await rerenderForSearch();
+
+  // ★検索結果は先頭から表示する
+  //   中身が差し替わっても scrollTop は自動でゼロに戻らないため、
+  //   グリッド表示のように全体の高さが低い場合、前の位置が新しい高さを超えて
+  //   ブラウザがスクロール限界（＝最下部）で止めてしまう。
+  //   描画完了後に明示的に先頭へ戻す。詳細画面はハイライト位置へ送るので対象外。
+  resetSearchScroll();
+}
+
+// --- 検索結果表示時のスクロール位置リセット（一覧画面のみ） ---
+function resetSearchScroll() {
+  const isListScreen = (currentScreen === 'brand' || currentScreen === 'products' ||
+                        currentScreen === 'tagProducts' || currentScreen === 'memo');
+  if (!isListScreen) return;
+  const mainArea = document.getElementById('mainArea');
+  if (!mainArea) return;
+  mainArea.scrollTop = 0;
+  // 画像読み込みなどで高さが確定した直後にもう一度だけ念押しで先頭に戻す
+  requestAnimationFrame(() => { mainArea.scrollTop = 0; });
 }
 
 // --- 現在の画面を検索状態で再描画 ---
-function rerenderForSearch() {
+async function rerenderForSearch() {
   if (currentTab === 'card') {
-    if (currentScreen === 'brand') renderBrands();
-    else if (currentScreen === 'products') renderProducts();
-    else if (currentScreen === 'tagProducts') renderTagProducts();
+    if (currentScreen === 'brand') await renderBrands();
+    else if (currentScreen === 'products') await renderProducts();
+    else if (currentScreen === 'tagProducts') await renderTagProducts();
     else if (currentScreen === 'detail') {
-      renderDetail();
+      await renderDetail();
       updateDetailHitCount();
     }
   } else {
-    if (currentScreen === 'memo') renderMemos();
-    else if (currentScreen === 'memoDetail') renderMemoDetail();  // 件数はinitMemoSearchNavが設定
+    if (currentScreen === 'memo') await renderMemos();
+    else if (currentScreen === 'memoDetail') await renderMemoDetail();  // 件数はinitMemoSearchNavが設定
   }
 }
 
@@ -7556,6 +7950,9 @@ function openSearchMode(pushHistory = true) {
   // （検索中はフォルダ/アイテムに関わらずカード直接表示になるため、押しても無意味）
   const topModeBtnS = document.getElementById('btnTopMode');
   if (topModeBtnS) topModeBtnS.style.display = 'none';
+  // 検索モード中は閲覧履歴ボタンも隠す（検索結果の表示に専念させる）
+  const historyBtnS = document.getElementById('btnHistory');
+  if (historyBtnS) historyBtnS.style.display = 'none';
 
   // 検索モード要素を表示
   document.getElementById('searchTotalCount').style.display = 'block';
@@ -7636,6 +8033,9 @@ function closeSearchMode() {
     if (currentScreen === 'brand') {
       const tmBtn = document.getElementById('btnTopMode');
       if (tmBtn) { tmBtn.style.display = 'flex'; updateTopModeIcon(); }
+      // 閲覧履歴ボタンも再表示
+      const histBtn = document.getElementById('btnHistory');
+      if (histBtn) histBtn.style.display = 'flex';
     }
   } else if (currentScreen === 'products' || currentScreen === 'tagProducts') {
     // 商品一覧画面では中央の件数バッジは使わない（タイトルに件数を含めるため）
@@ -7834,6 +8234,12 @@ function openCategoryManage() {
 function openFolderManage() {
   closeSettingsModal();
   showScreen('folderManage');
+}
+
+// --- タグ管理画面へ遷移 ---
+function openTagManage() {
+  closeSettingsModal();
+  showScreen('tagManage');
 }
 
 
@@ -8063,6 +8469,8 @@ async function doImport(file) {
 
       if (Array.isArray(ds.tags)) {
         for (const t of ds.tags) {
+          // showAsFolder を持たない古いバックアップは「表示オン」で復元
+          if (t.showAsFolder === undefined) t.showAsFolder = true;
           await dbPut('tags', t);
           importedTagIds.add(t.id);
         }
@@ -8431,11 +8839,10 @@ async function renderFolderManageList() {
   await loadAllData();
   const container = document.getElementById('folderManageList');
 
-  // トップ画面の現在の並び順をそのまま反映する
-  //   - トップ画面に表示されるフォルダ（全ブランド＋中身1件以上のタグ）→ トップ画面と同じ順序
-  //   - トップ画面に表示されない中身0件のタグ → 末尾に名前順で追加
+  // トップ画面の現在の並び順をそのまま反映する（フォルダ管理はブランド専用）
+  //   タグの管理・フォルダ表示のオンオフは「タグ管理」画面へ分離済み
 
-  // トップ画面に表示されるフォルダを構築
+  // トップ画面に表示されるブランドフォルダを構築
   let visibleFolders = [];
   allBrands.forEach(b => {
     visibleFolders.push({
@@ -8444,12 +8851,6 @@ async function renderFolderManageList() {
       name: b.name,
       count: allProducts.filter(p => p.brandId === b.id).length
     });
-  });
-  allTags.forEach(t => {
-    const count = allProducts.filter(p => Array.isArray(p.tagIds) && p.tagIds.includes(t.id)).length;
-    if (count > 0) {
-      visibleFolders.push({ type: 'tag', id: t.id, name: t.name, count });
-    }
   });
 
   // トップ画面と同じソートロジックを適用（renderBrands と揃える）
@@ -8525,13 +8926,7 @@ async function renderFolderManageList() {
     });
   }
 
-  // 中身0件のタグを末尾に名前順で追加（管理画面でしか表示されない）
-  const hiddenTags = allTags
-    .filter(t => !allProducts.some(p => Array.isArray(p.tagIds) && p.tagIds.includes(t.id)))
-    .map(t => ({ type: 'tag', id: t.id, name: t.name, count: 0 }))
-    .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-
-  let folders = visibleFolders.concat(hiddenTags);
+  let folders = visibleFolders;
 
   // 並べ替え操作中なら、その順序を尊重して並べ直す
   if (folderManageWorkingOrder.length > 0) {
@@ -8591,6 +8986,8 @@ async function renderFolderManageList() {
 function refreshManageScreen() {
   if (currentScreen === 'folderManage') {
     renderFolderManageList();
+  } else if (currentScreen === 'tagManage') {
+    renderTagManageList();
   }
 }
 
@@ -8899,6 +9296,7 @@ async function addTag() {
     name,
     order: maxOrder + 1,
     cardOrder: [],
+    showAsFolder: true,
     createdAt: new Date().toISOString()
   });
   await markDataUpdated();
@@ -8987,6 +9385,59 @@ async function deleteTag(tagId) {
   closeModal();
   toast('タグを削除しました');
   refreshManageScreen();
+}
+
+// --- タグ管理画面の描画（全タグを名前順で表示：フォルダ表示トグル付き） ---
+async function renderTagManageList() {
+  await loadAllData();
+  const container = document.getElementById('tagManageList');
+  if (!container) return;
+
+  // 中身0件のタグも含め、全タグを名前順で表示する
+  const tags = allTags.slice().sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+
+  if (tags.length === 0) {
+    container.innerHTML = '<div class="tag-manage-empty">タグがまだありません</div>';
+    return;
+  }
+
+  let html = '';
+  for (const t of tags) {
+    const count = allProducts.filter(p => Array.isArray(p.tagIds) && p.tagIds.includes(t.id)).length;
+    const on = t.showAsFolder !== false;
+    html += `<div class="tag-manage-card" data-id="${t.id}">
+      <div class="tag-manage-name">#${esc(t.name)}</div>
+      <div class="tag-manage-count">${count}件</div>
+      <div class="tag-folder-switch${on ? ' on' : ''}"
+           role="switch" aria-checked="${on}"
+           title="フォルダとして表示"
+           onclick="toggleTagFolder('${t.id}')"></div>
+      <button class="tag-manage-card-btn" onclick="showEditTagModal('${t.id}')" title="編集">
+        <svg viewBox="0 0 24 24"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+      </button>
+      <button class="tag-manage-card-btn delete" onclick="showDeleteTagModal('${t.id}')" title="削除">
+        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+      </button>
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+// --- タグの「フォルダとして表示」をオン/オフ切り替え ---
+async function toggleTagFolder(tagId) {
+  const tag = allTags.find(t => t.id === tagId);
+  if (!tag) return;
+  // 現在 false のときだけ true に、それ以外（true / 未設定）は false に
+  tag.showAsFolder = (tag.showAsFolder === false);
+  await dbPut('tags', tag);
+  await markDataUpdated();
+  // スイッチの見た目だけ即時更新（全体再描画は不要）
+  const el = document.querySelector(`#tagManageList .tag-manage-card[data-id="${tagId}"] .tag-folder-switch`);
+  if (el) {
+    const on = tag.showAsFolder !== false;
+    el.classList.toggle('on', on);
+    el.setAttribute('aria-checked', String(on));
+  }
 }
 
 
@@ -9202,7 +9653,13 @@ async function onAppHiding() {
 
 // --- アプリ起動時の処理 ---
 (async function init() {
-  await openDB();
+  try {
+    await openDB();
+  } catch (err) {
+    // ここで止まると一覧が空のまま何も表示されないため、原因を画面に出す
+    alert('起動に失敗しました（DB接続）。\n' + (err ? err.name + ': ' + err.message : '原因不明'));
+    return;
+  }
   await migrateProductCategories();
   await migrateProductImages();
   await loadCategories();
