@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PEG COSME">
-<meta name="app-version" content="1.6">
+<meta name="app-version" content="1.7">
 <link rel="manifest" href="manifest.json">
 
 <!-- ZIPの読み書きが出来るようになる -->
@@ -60,7 +60,6 @@
      #LIGHTBOX_JS ...... 画像全画面モーダル制御
      #TOAST_JS ......... トースト制御
      #UTIL ............. ユーティリティ関数
-     #RELEASE_MIGRATE .. 発売時期の移行（※一回限り・実行後に削除する）
      #INIT ............. 初期化
      ══════════════════════════════════════════ -->
 
@@ -1727,7 +1726,6 @@ mark.hl.hl-cur {
 /* --- ブランド選択モーダル内のインデックスバー（右端・モーダル専用） --- */
 /* トップ画面のインデックスバーとは別物。モーダル内リスト(.brand-pick-list)を対象にスクロールする */
 .modal-box:has(.brand-pick-wrap) { max-width: 360px; }  /* ブランド選択時だけモーダルを広げる */
-.modal-box:has(.release-migrate-wrap) { max-width: 360px; }  /* 【一回限り】発売時期の移行モーダル */
 .brand-pick-wrap { position: relative; }
 .brand-pick-indexbar {
   position: absolute;
@@ -2617,12 +2615,6 @@ mark.hl.hl-cur {
   <button class="settings-menu-item" onclick="openCategoryManage()">
     <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
     <span class="menu-label">カテゴリ管理</span>
-    <svg class="menu-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-  </button>
-  <!-- 【一回限り】発売時期の移行。実行と確認が済んだらこのボタンごと削除する -->
-  <button class="settings-menu-item" onclick="openReleaseMigrate()">
-    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-    <span class="menu-label">発売時期を移行</span>
     <svg class="menu-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
   </button>
 </div>
@@ -9766,209 +9758,6 @@ function escHL(s, query) {
 
   const pattern = `(${escapedQueries.join('|')})`;
   return escaped.replace(new RegExp(pattern, 'gi'), '<mark class="hl">$1</mark>');
-}
-
-
-/* ══════════════════════════════════════════
-   #RELEASE_MIGRATE 発売時期の移行（※一回限り・実行後に削除する）
-   ──────────────────────────────────────────
-   メモ欄の「発売」の記述から発売時期を拾って releaseDate に書き込む。
-   メモ欄の文章は書き換えない。
-   ══════════════════════════════════════════ */
-
-// --- 抽出結果の置き場（モーダルを開いてから実行するまで保持する） ---
-let releaseMigrateResult = null;
-
-// --- 全角数字を半角に直す（メモの表記ゆれ対策） ---
-function rmToHalfWidth(s) {
-  return (s || '').replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
-}
-
-// --- メモ1件から発売時期の候補を抜き出す ---
-//   前置き型：年月表記のあと10文字以内に「発売」がある  例）2024年2月発売／2025年2月リニューアル発売／2020/04/17 発売
-//   後置き型：「発売」のあと5文字以内に年月表記がある    例）発売日：2022年1月／発売日：2012/03/09
-//   「発売」の語とセットのときだけ拾うので、色番の数字（1356 など）は年号と誤認しない
-//   一度使った「発売」の語は二度数えない（`2015年発売 2025年にリニューアル` を2か所と誤判定しないため）
-function rmExtractCandidates(memo) {
-  const text = rmToHalfWidth(memo);
-  const maxYear = new Date().getFullYear() + 1;
-  const found = [];                 // { value, pos } pos は年の数字が始まる位置
-  const usedHatsubai = new Set();   // 既に使った「発売」の位置
-
-  const push = (y, m, pos, hatsubaiPos) => {
-    const year = parseInt(y, 10);
-    if (!(year >= 1900 && year <= maxYear)) return;       // 年として不自然な数字は捨てる
-    if (usedHatsubai.has(hatsubaiPos)) return;             // 同じ「発売」を二度使わない
-    if (found.some(f => f.pos === pos)) return;            // 同じ箇所を二重に数えない
-    const month = m ? parseInt(m, 10) : 0;
-    const value = (month >= 1 && month <= 12)
-      ? `${year}-${String(month).padStart(2, '0')}`
-      : String(year);
-    usedHatsubai.add(hatsubaiPos);
-    found.push({ value, pos });
-  };
-
-  // 前置き型（年月表記 → 発売）
-  const patBefore = /(\d{4})\s*年\s*(?:(\d{1,2})\s*月)?[^\d]{0,10}?発売/g;
-  let mb;
-  while ((mb = patBefore.exec(text)) !== null) {
-    push(mb[1], mb[2], mb.index, mb.index + mb[0].length - 2);
-  }
-
-  // 前置き型・スラッシュ表記（日付の「日」は落として年月だけ使う）
-  const patBeforeSlash = /(\d{4})\/(\d{1,2})(?:\/\d{1,2})?[^\d]{0,10}?発売/g;
-  let mbs;
-  while ((mbs = patBeforeSlash.exec(text)) !== null) {
-    push(mbs[1], mbs[2], mbs.index, mbs.index + mbs[0].length - 2);
-  }
-
-  // 後置き型（発売 → 年月表記）
-  const patAfter = /発売[^\d]{0,5}?(\d{4})\s*年\s*(?:(\d{1,2})\s*月)?/g;
-  let ma;
-  while ((ma = patAfter.exec(text)) !== null) {
-    push(ma[1], ma[2], ma.index + ma[0].indexOf(ma[1]), ma.index);
-  }
-
-  // 後置き型・スラッシュ表記
-  const patAfterSlash = /発売[^\d]{0,5}?(\d{4})\/(\d{1,2})(?:\/\d{1,2})?/g;
-  let mas;
-  while ((mas = patAfterSlash.exec(text)) !== null) {
-    push(mas[1], mas[2], mas.index + mas[0].indexOf(mas[1]), mas.index);
-  }
-
-  found.sort((a, b) => a.pos - b.pos);
-  return found;
-}
-
-// --- メモの中の「発売」の前後を切り出す（確認用の抜粋） ---
-function rmMemoSnippet(memo) {
-  const text = memo || '';
-  const parts = [];
-  let from = 0;
-  while (parts.length < 3) {
-    const i = text.indexOf('発売', from);
-    if (i === -1) break;
-    parts.push(text.slice(Math.max(0, i - 20), i + 15).replace(/\s+/g, ' ').trim());
-    from = i + 2;
-  }
-  return parts.join(' … ');
-}
-
-// --- 全商品を調べて、書き込む分・飛ばす分に仕分ける（DBには一切書き込まない） ---
-function rmScanProducts() {
-  const targets = [];    // 書き込む
-  const skipped = [];    // 飛ばす（理由つき）
-  const nomatch = [];    // 「発売」はあるが拾えなかった
-
-  for (const p of allProducts) {
-    const memo = p.memo || '';
-    if (!memo.includes('発売')) continue;
-
-    const snippet = rmMemoSnippet(memo);
-
-    if (p.releaseDate) {
-      skipped.push({ name: p.name, snippet, reason: `既に「${formatYearMonth(p.releaseDate)}」が入っています` });
-      continue;
-    }
-
-    const found = rmExtractCandidates(memo);
-    if (found.length === 0) {
-      nomatch.push({ name: p.name, snippet });
-    } else if (found.length >= 2) {
-      skipped.push({ name: p.name, snippet, reason: `発売時期の記述が${found.length}か所あります` });
-    } else {
-      targets.push({ id: p.id, name: p.name, snippet, value: found[0].value });
-    }
-  }
-
-  return { targets, skipped, nomatch };
-}
-
-// --- ︙メニュー →「発売時期を移行」 ---
-function openReleaseMigrate() {
-  closeSettingsModal();
-  releaseMigrateResult = rmScanProducts();
-  const { targets, skipped, nomatch } = releaseMigrateResult;
-
-  const row = (title, body) =>
-    `<div style="padding:8px 0;border-bottom:1px solid var(--border-light)">
-       <div style="color:var(--text);font-weight:600">${esc(title)}</div>
-       <div style="font-size:12px;margin-top:2px">${esc(body)}</div>
-     </div>`;
-
-  let html = `<div class="release-migrate-wrap">
-    <div style="color:var(--text);font-weight:600;margin-bottom:8px">
-      書き込む ${targets.length}件 ／ 飛ばす ${skipped.length}件 ／ 拾えず ${nomatch.length}件
-    </div>
-    <div style="max-height:50vh;overflow-y:auto;-webkit-overflow-scrolling:touch">`;
-
-  html += `<div style="margin-top:4px;font-weight:700;color:var(--primary)">■ 書き込む（${targets.length}件）</div>`;
-  html += targets.length
-    ? targets.map(t => row(`${t.name} → ${formatYearMonth(t.value)}`, t.snippet)).join('')
-    : '<div style="padding:8px 0">なし</div>';
-
-  html += `<div style="margin-top:12px;font-weight:700;color:var(--primary)">■ 飛ばす（${skipped.length}件）</div>`;
-  html += skipped.length
-    ? skipped.map(s => row(s.name, `${s.reason}｜${s.snippet}`)).join('')
-    : '<div style="padding:8px 0">なし</div>';
-
-  html += `<div style="margin-top:12px;font-weight:700;color:var(--primary)">■ 「発売」はあるが拾えず（${nomatch.length}件）</div>`;
-  html += nomatch.length
-    ? nomatch.map(n => row(n.name, n.snippet)).join('')
-    : '<div style="padding:8px 0">なし</div>';
-
-  html += `</div></div>`;
-
-  showModal({
-    title: '発売時期の移行',
-    content: html,
-    actions: [
-      { text: '閉じる', cls: 'modal-cancel', action: closeModal },
-      { text: 'コピー', cls: 'modal-ok', action: copyReleaseMigrateReport },
-      { text: '実行', cls: 'modal-primary', action: runReleaseMigrate }
-    ]
-  });
-}
-
-// --- 抽出結果をテキストにしてクリップボードへ ---
-function copyReleaseMigrateReport() {
-  if (!releaseMigrateResult) return;
-  const { targets, skipped, nomatch } = releaseMigrateResult;
-  const lines = [];
-  lines.push(`発売時期の移行（書き込む ${targets.length}件／飛ばす ${skipped.length}件／拾えず ${nomatch.length}件）`);
-  lines.push('');
-  lines.push(`■ 書き込む（${targets.length}件）`);
-  targets.forEach(t => lines.push(`${t.name}\t${formatYearMonth(t.value)}\t${t.snippet}`));
-  lines.push('');
-  lines.push(`■ 飛ばす（${skipped.length}件）`);
-  skipped.forEach(s => lines.push(`${s.name}\t${s.reason}\t${s.snippet}`));
-  lines.push('');
-  lines.push(`■ 「発売」はあるが拾えず（${nomatch.length}件）`);
-  nomatch.forEach(n => lines.push(`${n.name}\t${n.snippet}`));
-  doCopy(lines.join('\n'));
-}
-
-// --- 実際にDBへ書き込む ---
-async function runReleaseMigrate() {
-  if (!releaseMigrateResult || releaseMigrateResult.targets.length === 0) {
-    toast('書き込む対象がありません');
-    return;
-  }
-  const targets = releaseMigrateResult.targets;
-  let count = 0;
-  for (const t of targets) {
-    const p = await dbGet('products', t.id);
-    if (!p) continue;
-    if (p.releaseDate) continue;       // 念のため、この間に入力されたものは触らない
-    p.releaseDate = t.value;
-    await dbPut('products', p);
-    count++;
-  }
-  await markDataUpdated();
-  await loadAllData();
-  releaseMigrateResult = null;
-  closeModal();
-  toast(`${count}件に発売時期を設定しました`);
 }
 
 
