@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PEG COSME">
-<meta name="app-version" content="1.7">
+<meta name="app-version" content="2.0">
 <link rel="manifest" href="manifest.json">
 
 <!-- ZIPの読み書きが出来るようになる -->
@@ -503,6 +503,8 @@ img { display: block; max-width: 100%; }
   </button>
   <!-- メモフォーム用：保存ボタン -->
   <button class="header-text-btn" id="btnMemoSave" onclick="submitMemo()" style="display:none">保存</button>
+  <!-- 商品フォーム用：キャンセルボタン（保存せずに戻る） -->
+  <button class="header-text-btn header-text-btn-mute" id="btnFormCancel" onclick="cancelProductForm()" style="display:none">キャンセル</button>
   <!-- 商品フォーム用：保存ボタン -->
   <button class="header-text-btn" id="btnFormSave" onclick="submitProduct()" style="display:none">保存</button>
   <!-- 並べ替えモード用：キャンセル・確定ボタン -->
@@ -1315,6 +1317,12 @@ mark.hl.hl-cur {
   margin-bottom: 24px;
 }
 .detail-tag {
+  /* 中身を上下中央に置く。フレックスの引き伸ばしで箱の高さが揃っても、
+     中の文字は行の高さのぶんだけ上に寄るため、それを打ち消す */
+  display: inline-flex; align-items: center;
+  /* 行の高さを固定。欧文（5.2g・¥5,500）と和文でフォント任せの行の高さが
+     変わるのを防ぎ、チップごとの文字位置のばらつきを抑える */
+  line-height: 1.5;
   font-size: 12px; font-weight: 500;
   padding: 3px 10px; border-radius: 5px;
   background: var(--primary-light); color: var(--primary-dark);
@@ -1439,19 +1447,53 @@ mark.hl.hl-cur {
 }
 .form-input:focus { border-color: var(--primary); }
 
-/* --- 年月プルダウン（購入時期・発売時期） --- */
-.form-date-row { display: flex; align-items: center; gap: 6px; }
-.form-date-select {
-  width: auto; flex: 0 1 auto;
-  padding: 0 6px 0 10px;
-  max-width: 45%;
+/* --- 年月ピッカー（購入時期・発売時期） --- */
+/* フォーム上のトリガーボタンは .brand-pick-trigger を流用。
+   未設定のときだけ文字を薄くして、入力済みと見分けられるようにする */
+.date-pick-placeholder { color: var(--text-lighter); }
+
+/* 年月ピッカーのモーダルだけ少し広げる */
+.modal-box:has(.date-pick-wrap) { max-width: 340px; }
+
+/* 年のリスト（中身の項目は .brand-pick-item を流用） */
+.date-pick-year-list {
+  position: relative;        /* 開いた時のスクロール位置計算の基準にする */
+  display: flex; flex-direction: column;
+  max-height: 34vh; overflow-y: auto;
+  padding: 2px 6px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
 }
-/* 年が未選択のときの月プルダウン（選べないことを見た目でも示す） */
-.form-date-select:disabled {
-  background: var(--primary-lighter);
+/* 「年」「月」の小見出し */
+.date-pick-label {
+  font-size: 12px; font-weight: 700;
+  color: var(--primary); letter-spacing: 0.05em;
+  margin: 12px 0 4px;
+}
+.date-pick-label:first-child { margin-top: 0; }
+
+/* 月のボタン（4列×3段） */
+.date-pick-months {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+}
+.date-pick-month, .date-pick-month-none {
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg); color: var(--text);
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.date-pick-month-none { width: 100%; margin-top: 6px; font-size: 13px; }
+.date-pick-month.selected, .date-pick-month-none.selected {
+  background: var(--primary); color: #fff; border-color: var(--primary);
+}
+/* 年が未設定のあいだは月を選べない（見た目でも示す） */
+.date-pick-month.disabled, .date-pick-month-none.disabled {
   color: var(--text-lighter);
+  background: var(--primary-lighter);
+  opacity: 0.55; pointer-events: none;
 }
-.form-date-unit { font-size: 14px; color: var(--text-light); flex-shrink: 0; }
 
 /* --- テキストエリア（成分・メモ入力用） --- */
 .form-textarea {
@@ -1876,27 +1918,21 @@ mark.hl.hl-cur {
       <label class="form-label">価格</label>
       <input type="text" class="form-input" id="formPrice" placeholder="例：3300" autocomplete="off">
     </div>
-    <!-- 発売時期 -->
+    <!-- 発売時期（タップでアプリ内の年月ピッカーを開く。値は hidden に持つ） -->
     <div class="form-group">
       <label class="form-label">発売時期</label>
-      <div class="form-date-row">
-        <select class="form-input form-date-select" id="formReleaseYear"
-                onchange="syncDateSelectState('formReleaseYear', 'formReleaseMonth')"></select>
-        <span class="form-date-unit">年</span>
-        <select class="form-input form-date-select" id="formReleaseMonth"></select>
-        <span class="form-date-unit">月</span>
-      </div>
+      <button type="button" class="brand-pick-trigger" id="formReleaseTrigger" onclick="openDatePickModal('release')">
+        <span id="formReleaseTriggerLabel" class="date-pick-placeholder">未設定</span>
+      </button>
+      <input type="hidden" id="formReleaseDate" value="">
     </div>
-    <!-- 購入時期 -->
+    <!-- 購入時期（発売時期と同じ年月ピッカーを使う） -->
     <div class="form-group">
       <label class="form-label">購入時期</label>
-      <div class="form-date-row">
-        <select class="form-input form-date-select" id="formPurchaseYear"
-                onchange="syncDateSelectState('formPurchaseYear', 'formPurchaseMonth')"></select>
-        <span class="form-date-unit">年</span>
-        <select class="form-input form-date-select" id="formPurchaseMonth"></select>
-        <span class="form-date-unit">月</span>
-      </div>
+      <button type="button" class="brand-pick-trigger" id="formPurchaseTrigger" onclick="openDatePickModal('purchase')">
+        <span id="formPurchaseTriggerLabel" class="date-pick-placeholder">未設定</span>
+      </button>
+      <input type="hidden" id="formPurchaseDate" value="">
     </div>
     <!-- 全成分 -->
     <div class="form-group">
@@ -3183,6 +3219,7 @@ function showScreen(name, pushHistory = true) {
   const detailDeleteBtn = document.getElementById('btnDetailDelete');
   const memoSaveBtn = document.getElementById('btnMemoSave');
   const formSaveBtn = document.getElementById('btnFormSave');
+  const formCancelBtn = document.getElementById('btnFormCancel');
   const sortConfirmBtn = document.getElementById('btnSortConfirm');
   const sortCancelBtn = document.getElementById('btnSortCancel');
   const totalCount = document.getElementById('headerTotalCount');
@@ -3204,6 +3241,7 @@ function showScreen(name, pushHistory = true) {
   detailDeleteBtn.style.display = 'none';
   memoSaveBtn.style.display = 'none';
   formSaveBtn.style.display = 'none';
+  if (formCancelBtn) formCancelBtn.style.display = 'none';
   if (sortConfirmBtn) sortConfirmBtn.style.display = 'none';
   if (sortCancelBtn) sortCancelBtn.style.display = 'none';
   // フォルダ管理画面用ボタンも全画面でデフォルト非表示
@@ -3305,6 +3343,8 @@ function showScreen(name, pushHistory = true) {
       settingsBtn.style.display = 'none';
       formSaveBtn.style.display = 'inline-block';
       formSaveBtn.textContent = editingProductId ? '更新' : '登録';
+      // キャンセルは保存の左隣に表示（保存せずに戻る）
+      if (formCancelBtn) formCancelBtn.style.display = 'inline-block';
       title.textContent = editingProductId ? '商品を編集' : '商品を登録';
       break;
     case 'memo':
@@ -3453,14 +3493,15 @@ function goToTop() {
 // --- 戻る操作 ---
 let formSubmitted = false; // submitProduct/submitMemoで保存済みフラグ
 let formImagesDirty = false; // 商品フォームで画像を追加・削除したか（変更なし判定用）
+let formCanceled = false; // 商品フォームでキャンセルが押されたフラグ（自動保存を1回だけ止める）
 
 async function goBack() {
   // メモフォームからの戻りは自動保存(submit済みならスキップ)
   if (currentScreen === 'memoForm' && !formSubmitted) {
     await autoSaveMemo();
   }
-  // 商品フォームからの戻りは自動保存(submit済みならスキップ)
-  if (currentScreen === 'form' && !formSubmitted) {
+  // 商品フォームからの戻りは自動保存(submit済み・キャンセル押下ならスキップ)
+  if (currentScreen === 'form' && !formSubmitted && !formCanceled) {
     await autoSaveProduct();
   }
   // フォルダ管理画面からの戻りは並べ替えを自動保存（離脱処理だけ実行し、
@@ -3469,6 +3510,7 @@ async function goBack() {
     await leaveFolderManageScreen();
   }
   formSubmitted = false;
+  formCanceled = false;
   if (screenHistory.length > 0) {
     const prev = screenHistory.pop();
 
@@ -6770,6 +6812,7 @@ async function addBrandFromForm() {
 // 第2引数 defaultBrandId: 新規登録時のブランド初期値。省略時は ''（未分類）にリセット。
 async function openProductForm(productId, defaultBrandId = '') {
   editingProductId = productId;
+  formCanceled = false; // 前回のキャンセル状態を持ち越さない
   formImages = [];
   formImagesDirty = false; // フォームを開いた時点では画像は未変更
   selectedTagIds = []; // タグも初期化
@@ -6782,10 +6825,8 @@ async function openProductForm(productId, defaultBrandId = '') {
   document.getElementById('formName').value = '';
   document.getElementById('formVolume').value = '';
   document.getElementById('formPrice').value = '';
-  fillDateSelects('formReleaseYear', 'formReleaseMonth');
-  setDateSelectValue('formReleaseYear', 'formReleaseMonth', '');
-  fillDateSelects('formPurchaseYear', 'formPurchaseMonth');
-  setDateSelectValue('formPurchaseYear', 'formPurchaseMonth', '');
+  setDatePickValue('release', '');
+  setDatePickValue('purchase', '');
   document.getElementById('formIngredients').value = '';
   document.getElementById('formMemo').value = '';
 
@@ -6797,8 +6838,8 @@ async function openProductForm(productId, defaultBrandId = '') {
       refreshCategorySelects(p.categoryMakeup || '', p.categorySkincare || '');
       document.getElementById('formVolume').value = p.volume || '';
       document.getElementById('formPrice').value = p.price || '';
-      setDateSelectValue('formReleaseYear', 'formReleaseMonth', p.releaseDate || '');
-      setDateSelectValue('formPurchaseYear', 'formPurchaseMonth', p.purchaseDate || '');
+      setDatePickValue('release', p.releaseDate || '');
+      setDatePickValue('purchase', p.purchaseDate || '');
       document.getElementById('formIngredients').value = p.ingredients || '';
       document.getElementById('formMemo').value = p.memo || '';
       if (p.images?.length > 0) {
@@ -7101,8 +7142,8 @@ async function autoSaveProduct() {
     volume: document.getElementById('formVolume').value.trim(),
     price: priceRaw,
     priceNum,
-    releaseDate: getDateSelectValue('formReleaseYear', 'formReleaseMonth'),
-    purchaseDate: getDateSelectValue('formPurchaseYear', 'formPurchaseMonth'),
+    releaseDate: getDatePickValue('release'),
+    purchaseDate: getDatePickValue('purchase'),
     ingredients: document.getElementById('formIngredients').value.trim(),
     memo: document.getElementById('formMemo').value.trim(),
     image: formImages[0] || null,
@@ -7181,8 +7222,8 @@ async function submitProduct() {
     volume: document.getElementById('formVolume').value.trim(),
     price: priceRaw,
     priceNum,
-    releaseDate: getDateSelectValue('formReleaseYear', 'formReleaseMonth'),
-    purchaseDate: getDateSelectValue('formPurchaseYear', 'formPurchaseMonth'),
+    releaseDate: getDatePickValue('release'),
+    purchaseDate: getDatePickValue('purchase'),
     ingredients: document.getElementById('formIngredients').value.trim(),
     memo: document.getElementById('formMemo').value.trim(),
     image: formImages[0] || null,
@@ -7265,6 +7306,16 @@ async function submitProduct() {
     formSubmitted = true;
     goBack();
   }
+}
+
+// --- 商品フォームをキャンセルする（保存せずに戻る） ---
+// 戻る操作では goBack() 内で autoSaveProduct() が走るため、
+// formCanceled フラグを立てて自動保存を1回だけ止めてから履歴を戻す。
+function cancelProductForm() {
+  if (currentScreen !== 'form') return;
+  formCanceled = true;
+  editingProductId = null; // 編集途中のIDを残さない
+  history.back();
 }
 
 // --- フォーム入力時のスクロール位置補正 ---
@@ -9657,76 +9708,157 @@ function toast(msg) {
    #UTIL ユーティリティ関数
    ══════════════════════════════════════════ */
 
-// --- 年月プルダウンの共通処理（購入時期・発売時期で使い回す） ---
+// --- 年月ピッカーの共通処理（購入時期・発売時期で使い回す） ---
 // 保存する文字列は3種類だけ： "" （未設定） / "2018" （年のみ） / "2024-09" （年月）
+// ブラウザ標準の <select> はスクロールの挙動を制御できず、選び直しも取り消せないため、
+// ブランド選択と同じアプリ内モーダルで作っている。
 const DATE_SELECT_MIN_YEAR = 1980;
 
-// 年・月それぞれのプルダウンに選択肢を作る（新しい年が上に来る並び）
-function fillDateSelects(yearId, monthId) {
-  const yearSel = document.getElementById(yearId);
-  const monthSel = document.getElementById(monthId);
-  if (!yearSel || !monthSel) return;
+// ピッカーを使う項目の定義（キー → 値を持つhiddenのid・表示ラベルのid・モーダルの見出し）
+const DATE_PICK_FIELDS = {
+  release:  { valueId: 'formReleaseDate',  labelId: 'formReleaseTriggerLabel',  title: '発売時期を選択' },
+  purchase: { valueId: 'formPurchaseDate', labelId: 'formPurchaseTriggerLabel', title: '購入時期を選択' }
+};
+
+// モーダルで選択中の内容を一時的に置く場所（キャンセルするとそのまま捨てられる）
+let datePickKey = '';
+let datePickYear = '';
+let datePickMonth = '';
+
+// 保存値をフォームにセットし、トリガーボタンの表示も合わせて更新する
+function setDatePickValue(key, value) {
+  const f = DATE_PICK_FIELDS[key];
+  if (!f) return;
+  const input = document.getElementById(f.valueId);
+  const label = document.getElementById(f.labelId);
+  const v = value || '';
+  if (input) input.value = v;
+  if (label) {
+    label.textContent = v ? formatYearMonth(v) : '未設定';
+    label.classList.toggle('date-pick-placeholder', !v);
+  }
+}
+
+// フォームに入っている保存値を取り出す
+function getDatePickValue(key) {
+  const f = DATE_PICK_FIELDS[key];
+  if (!f) return '';
+  const input = document.getElementById(f.valueId);
+  return input ? (input.value || '') : '';
+}
+
+// --- 年月ピッカーを開く ---
+function openDatePickModal(key) {
+  const f = DATE_PICK_FIELDS[key];
+  if (!f) return;
+  const v = getDatePickValue(key);
+  datePickKey = key;
+  datePickYear = /^\d{4}/.test(v) ? v.slice(0, 4) : '';
+  datePickMonth = /^\d{4}-\d{2}$/.test(v) ? v.slice(5, 7) : '';
+
+  showModal({
+    title: f.title,
+    content: `<div class="date-pick-wrap">
+      <div class="date-pick-label">年</div>
+      <div class="date-pick-year-list" id="datePickYearList"></div>
+      <div class="date-pick-label">月</div>
+      <div class="date-pick-months" id="datePickMonths"></div>
+      <button type="button" class="date-pick-month-none" id="datePickMonthNone" onclick="selectDatePickMonth('')">月を指定しない</button>
+    </div>`,
+    actions: [
+      { text: 'キャンセル', cls: 'modal-cancel', action: closeModal },
+      { text: '完了', cls: 'modal-primary', action: applyDatePick }
+    ]
+  });
+
+  renderDatePickYearList();
+  renderDatePickMonths();
+  // 開いた直後だけ、選択中の年が見える位置までリストの中をスクロールする
+  // （選んだ時にはスクロールしない）
+  requestAnimationFrame(scrollDatePickYearIntoView);
+}
+
+// --- 年のリストを描画（新しい年が上に来る並び） ---
+function renderDatePickYearList() {
+  const list = document.getElementById('datePickYearList');
+  if (!list) return;
 
   const maxYear = new Date().getFullYear() + 1;
-  let yHtml = '<option value="">—</option>';
-  for (let y = maxYear; y >= DATE_SELECT_MIN_YEAR; y--) {
-    yHtml += `<option value="${y}">${y}</option>`;
-  }
-  yearSel.innerHTML = yHtml;
+  const years = [];
+  for (let y = maxYear; y >= DATE_SELECT_MIN_YEAR; y--) years.push(String(y));
+  // 1980年より前など、一覧に無い年が保存されていた場合は末尾に足して選べるようにする
+  if (datePickYear && !years.includes(datePickYear)) years.push(datePickYear);
 
-  let mHtml = '<option value="">—</option>';
+  let html = `<button type="button" class="brand-pick-item${datePickYear === '' ? ' selected' : ''}" data-year="" onclick="selectDatePickYear('')">
+    <span class="brand-pick-radio"></span><span class="brand-pick-name">未設定</span>
+  </button>`;
+  years.forEach(y => {
+    html += `<button type="button" class="brand-pick-item${datePickYear === y ? ' selected' : ''}" data-year="${y}" onclick="selectDatePickYear('${y}')">
+      <span class="brand-pick-radio"></span><span class="brand-pick-name">${y}年</span>
+    </button>`;
+  });
+  list.innerHTML = html;
+}
+
+// --- 年を選ぶ ---
+// リストは作り直さず、選択中の印だけ付け替える。
+// （innerHTMLで作り直すとスクロール位置が先頭に戻ってしまうため）
+function selectDatePickYear(y) {
+  datePickYear = y;
+  if (!y) datePickMonth = '';   // 年が未設定なら月も外す（月だけの状態は作らせない）
+  const list = document.getElementById('datePickYearList');
+  if (list) {
+    list.querySelectorAll('.brand-pick-item').forEach(el => {
+      el.classList.toggle('selected', (el.dataset.year || '') === y);
+    });
+  }
+  renderDatePickMonths();
+}
+
+// --- 月のボタンを描画（年が未設定のあいだは押せない） ---
+function renderDatePickMonths() {
+  const wrap = document.getElementById('datePickMonths');
+  if (!wrap) return;
+  const disabled = !datePickYear;
+
+  let html = '';
   for (let m = 1; m <= 12; m++) {
     const mm = String(m).padStart(2, '0');
-    mHtml += `<option value="${mm}">${m}</option>`;
+    html += `<button type="button" class="date-pick-month${datePickMonth === mm ? ' selected' : ''}${disabled ? ' disabled' : ''}" onclick="selectDatePickMonth('${mm}')">${m}</button>`;
   }
-  monthSel.innerHTML = mHtml;
-}
+  wrap.innerHTML = html;
 
-// 年が未選択のあいだは月を選べないようにする（「月だけある」状態を作らせない）
-function syncDateSelectState(yearId, monthId) {
-  const yearSel = document.getElementById(yearId);
-  const monthSel = document.getElementById(monthId);
-  if (!yearSel || !monthSel) return;
-  if (!yearSel.value) {
-    monthSel.value = '';
-    monthSel.disabled = true;
-  } else {
-    monthSel.disabled = false;
+  const noneBtn = document.getElementById('datePickMonthNone');
+  if (noneBtn) {
+    noneBtn.classList.toggle('selected', !disabled && datePickMonth === '');
+    noneBtn.classList.toggle('disabled', disabled);
   }
 }
 
-// 2つのプルダウンから保存用の文字列を作る
-function getDateSelectValue(yearId, monthId) {
-  const yearSel = document.getElementById(yearId);
-  const monthSel = document.getElementById(monthId);
-  if (!yearSel || !monthSel) return '';
-  const y = yearSel.value;
-  const m = monthSel.value;
-  if (!y) return '';            // 年が無ければ未設定（月だけの状態は保存しない）
-  return m ? `${y}-${m}` : y;
+// --- 月を選ぶ（'' は「月を指定しない」） ---
+function selectDatePickMonth(mm) {
+  if (!datePickYear) return;   // 年が未設定のうちは月を選べない
+  datePickMonth = mm;
+  renderDatePickMonths();
 }
 
-// 保存済みの文字列を2つのプルダウンに流し込む
-function setDateSelectValue(yearId, monthId, value) {
-  const yearSel = document.getElementById(yearId);
-  const monthSel = document.getElementById(monthId);
-  if (!yearSel || !monthSel) return;
+// --- 開いた直後に、選択中の年をリストの中央あたりへ寄せる ---
+// scrollIntoView は画面ごと動くことがあるので、リストのscrollTopを直接動かしている
+function scrollDatePickYearIntoView() {
+  const list = document.getElementById('datePickYearList');
+  if (!list) return;
+  const target = list.querySelector('.brand-pick-item.selected');
+  if (!target) return;
+  list.scrollTop = target.offsetTop - (list.clientHeight / 2) + (target.offsetHeight / 2);
+}
 
-  const v = value || '';
-  const y = /^\d{4}/.test(v) ? v.slice(0, 4) : '';
-  const m = /^\d{4}-\d{2}/.test(v) ? v.slice(5, 7) : '';
-
-  // 選択肢に無い年（1980年より前など）が保存されていた場合は、その年を臨時で追加する
-  if (y && !Array.from(yearSel.options).some(o => o.value === y)) {
-    const opt = document.createElement('option');
-    opt.value = y;
-    opt.textContent = y;
-    yearSel.appendChild(opt);
-  }
-
-  yearSel.value = y;
-  monthSel.value = m;
-  syncDateSelectState(yearId, monthId);
+// --- 「完了」で選択内容をフォームに反映する ---
+function applyDatePick() {
+  const value = datePickYear
+    ? (datePickMonth ? `${datePickYear}-${datePickMonth}` : datePickYear)
+    : '';
+  setDatePickValue(datePickKey, value);
+  closeModal();
 }
 
 // 保存値を表示用に整える（"2024-09" → 2024年09月 / "2018" → 2018年）
