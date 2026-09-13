@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PEG COSME">
-<meta name="app-version" content="1.5">
+<meta name="app-version" content="1.6">
 <link rel="manifest" href="manifest.json">
 
 <!-- ZIPの読み書きが出来るようになる -->
@@ -9785,37 +9785,55 @@ function rmToHalfWidth(s) {
 }
 
 // --- メモ1件から発売時期の候補を抜き出す ---
-//   前置き型：年月表記のあと10文字以内に「発売」がある  例）2024年2月発売／2025年2月リニューアル発売
-//   後置き型：「発売」のあと5文字以内に年月表記がある    例）発売日：2022年1月
+//   前置き型：年月表記のあと10文字以内に「発売」がある  例）2024年2月発売／2025年2月リニューアル発売／2020/04/17 発売
+//   後置き型：「発売」のあと5文字以内に年月表記がある    例）発売日：2022年1月／発売日：2012/03/09
 //   「発売」の語とセットのときだけ拾うので、色番の数字（1356 など）は年号と誤認しない
+//   一度使った「発売」の語は二度数えない（`2015年発売 2025年にリニューアル` を2か所と誤判定しないため）
 function rmExtractCandidates(memo) {
   const text = rmToHalfWidth(memo);
   const maxYear = new Date().getFullYear() + 1;
-  const found = [];   // { value, pos } pos は年の数字が始まる位置
+  const found = [];                 // { value, pos } pos は年の数字が始まる位置
+  const usedHatsubai = new Set();   // 既に使った「発売」の位置
 
-  const push = (y, m, pos) => {
+  const push = (y, m, pos, hatsubaiPos) => {
     const year = parseInt(y, 10);
     if (!(year >= 1900 && year <= maxYear)) return;       // 年として不自然な数字は捨てる
+    if (usedHatsubai.has(hatsubaiPos)) return;             // 同じ「発売」を二度使わない
+    if (found.some(f => f.pos === pos)) return;            // 同じ箇所を二重に数えない
     const month = m ? parseInt(m, 10) : 0;
     const value = (month >= 1 && month <= 12)
       ? `${year}-${String(month).padStart(2, '0')}`
       : String(year);
-    if (found.some(f => f.pos === pos)) return;            // 同じ箇所を二重に数えない
+    usedHatsubai.add(hatsubaiPos);
     found.push({ value, pos });
   };
 
-  // 前置き型
+  // 前置き型（年月表記 → 発売）
   const patBefore = /(\d{4})\s*年\s*(?:(\d{1,2})\s*月)?[^\d]{0,10}?発売/g;
   let mb;
   while ((mb = patBefore.exec(text)) !== null) {
-    push(mb[1], mb[2], mb.index);
+    push(mb[1], mb[2], mb.index, mb.index + mb[0].length - 2);
   }
 
-  // 後置き型
+  // 前置き型・スラッシュ表記（日付の「日」は落として年月だけ使う）
+  const patBeforeSlash = /(\d{4})\/(\d{1,2})(?:\/\d{1,2})?[^\d]{0,10}?発売/g;
+  let mbs;
+  while ((mbs = patBeforeSlash.exec(text)) !== null) {
+    push(mbs[1], mbs[2], mbs.index, mbs.index + mbs[0].length - 2);
+  }
+
+  // 後置き型（発売 → 年月表記）
   const patAfter = /発売[^\d]{0,5}?(\d{4})\s*年\s*(?:(\d{1,2})\s*月)?/g;
   let ma;
   while ((ma = patAfter.exec(text)) !== null) {
-    push(ma[1], ma[2], ma.index + ma[0].indexOf(ma[1]));
+    push(ma[1], ma[2], ma.index + ma[0].indexOf(ma[1]), ma.index);
+  }
+
+  // 後置き型・スラッシュ表記
+  const patAfterSlash = /発売[^\d]{0,5}?(\d{4})\/(\d{1,2})(?:\/\d{1,2})?/g;
+  let mas;
+  while ((mas = patAfterSlash.exec(text)) !== null) {
+    push(mas[1], mas[2], mas.index + mas[0].indexOf(mas[1]), mas.index);
   }
 
   found.sort((a, b) => a.pos - b.pos);
