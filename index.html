@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PEG COSME">
-<meta name="app-version" content="2.1">
+<meta name="app-version" content="2.2">
 <link rel="manifest" href="manifest.json">
 
 <!-- ZIPの読み書きが出来るようになる -->
@@ -3084,6 +3084,7 @@ let scrollPositions = {};       // 一覧画面ごとのスクロール位置を
 // --- ソート・フィルター状態 ---
 let currentSort = 'createdAt_desc';        // トップ画面（ブランド一覧）のフォルダ並びソート
 let currentTopItemSort = 'createdAt_desc'; // トップ画面アイテム表示のカード並びソート
+let currentFilterSort = 'createdAt_desc';  // トップ画面でカテゴリ絞り込み中のカード並びソート（通常時とは別に記憶）
 let currentProductSort = 'createdAt_desc'; // フォルダ内（ブランド/タグ）のカード並びソート
 let currentMemoSort = 'date_desc';         // メモタブのソート(デフォルト：日付新しい順)
 let currentCategoryFilter = null;          // カテゴリフィルター(null＝すべて)
@@ -3853,6 +3854,8 @@ function renderSortDropdown() {
     active = currentMemoSort;
   } else if (currentScreen === 'products' || currentScreen === 'tagProducts') {
     active = currentProductSort;  // フォルダ内画面
+  } else if (currentCategoryFilter) {
+    active = currentFilterSort;    // トップ画面（カテゴリ絞り込み中）
   } else if (currentTopMode === 'item') {
     active = currentTopItemSort;   // トップ画面（アイテム表示モード）
   } else {
@@ -3866,7 +3869,8 @@ function renderSortDropdown() {
   //  - ブランドフォルダ画面：brand.sortOrder があれば有効
   //  - タグフォルダ画面：tag.cardOrder があれば有効
   // ※トップ画面のアイテム表示モードでは「並べ替え順」は使えないので出さない
-  if (!isMemo && !(currentScreen === 'brand' && currentTopMode === 'item')) {
+  // ※トップ画面でカテゴリ絞り込み中もカードが直接並ぶので出さない
+  if (!isMemo && !(currentScreen === 'brand' && (currentTopMode === 'item' || currentCategoryFilter))) {
     let hasOrder = false;
     if (currentScreen === 'brand') {
       hasOrder = Array.isArray(folderOrder) && folderOrder.length > 0;
@@ -3972,7 +3976,14 @@ async function applySort(sortKey) {
   } else {
     closeAllDropdowns();
     if (currentScreen === 'brand') {
-      if (currentTopMode === 'item') {
+      if (currentCategoryFilter) {
+        // トップ画面（カテゴリ絞り込み中）：絞り込み専用のカード並びソート
+        //   通常時の並び順（currentSort / currentTopItemSort）には触らないので、
+        //   絞り込みを解除するとトップ画面は元の並び順に戻る
+        currentFilterSort = sortKey;
+        // 次回起動時に復元できるようDBに保存
+        await dbPut('meta', { key: 'filterSort', value: sortKey });
+      } else if (currentTopMode === 'item') {
         // トップ画面（アイテム表示モード）：カード並びソート
         currentTopItemSort = sortKey;
         // 次回起動時に復元できるようDBに保存
@@ -4237,7 +4248,10 @@ async function renderBrands() {
 
     // ソート
     let sortKeyForProducts;
-    if (currentTopMode === 'item') {
+    if (currentCategoryFilter) {
+      // カテゴリ絞り込み中：絞り込み専用のカード並びソートを使う
+      sortKeyForProducts = currentFilterSort;
+    } else if (currentTopMode === 'item') {
       // アイテム表示モード：専用のカード並びソートを使う
       sortKeyForProducts = currentTopItemSort;
     } else {
@@ -9972,6 +9986,12 @@ async function onAppHiding() {
   const savedItemSort = await dbGet('meta', 'topItemSort');
   if (savedItemSort?.value) {
     currentTopItemSort = savedItemSort.value;
+  }
+
+  // 前回保存したカテゴリ絞り込み中のソート状態を復元
+  const savedFilterSort = await dbGet('meta', 'filterSort');
+  if (savedFilterSort?.value) {
+    currentFilterSort = savedFilterSort.value;
   }
 
   // 検索履歴を復元（最大5件・IndexedDBに永続化）
